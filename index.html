@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoKota v2 — Pixel City</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap');
+:root{
+  --bg:#0d1117;--panel:#161b22;--border:#30363d;
+  --green:#2ecc71;--red:#e74c3c;--yellow:#f39c12;--blue:#3498db;
+  --purple:#9b59b6;--cyan:#1abc9c;--orange:#e67e22;
+  --text:#e8eaed;--dim:#8b949e;
+  --river:#1a6fa8;--river2:#2185c7;
+}
+*{margin:0;padding:0;box-sizing:border-box;image-rendering:pixelated;}
+body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospace;font-size:8px;overflow:hidden;user-select:none;}
+
+#app{display:grid;grid-template-columns:190px 1fr 190px;grid-template-rows:44px 1fr 72px;height:100vh;transition:grid-template-columns .25s ease;}
+#app.lhide{grid-template-columns:0px 1fr 190px;}
+#app.rhide{grid-template-columns:190px 1fr 0px;}
+#app.lhide.rhide{grid-template-columns:0px 1fr 0px;}
+
+/* PANEL TOGGLE TABS — fixed positioning, tidak dalam #cw */
+.panel-tab{
+  position:fixed;top:50%;transform:translateY(-50%);
+  background:var(--panel);border:2px solid var(--border);
+  color:var(--dim);font-family:'Press Start 2P',monospace;
+  font-size:7px;padding:8px 4px;cursor:pointer;z-index:20;
+  writing-mode:vertical-rl;letter-spacing:1px;
+  transition:border-color .15s,color .15s,left .25s,right .25s;
+  line-height:1;
+}
+.panel-tab:hover{border-color:var(--green);color:var(--green);}
+#ltab{left:190px;border-left:none;border-radius:0 4px 4px 0;}
+#rtab{right:190px;border-right:none;border-radius:4px 0 0 4px;}
+#app.lhide #ltab{left:0px;}
+#app.rhide #rtab{right:0px;}
+
+/* PANELS */
+#lpanel{background:var(--panel);border-right:2px solid var(--border);padding:8px 5px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;overflow-x:hidden;transition:padding .25s;min-width:0;}
+#rpanel{background:var(--panel);border-left:2px solid var(--border);padding:8px 5px;display:flex;flex-direction:column;gap:5px;overflow-y:auto;overflow-x:hidden;transition:padding .25s;min-width:0;}
+#app.lhide #lpanel{padding:0;overflow:hidden;}
+#app.rhide #rpanel{padding:0;overflow:hidden;}
+
+/* HEADER */
+#hdr{grid-column:1/-1;background:var(--panel);border-bottom:2px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 8px;gap:6px;flex-wrap:nowrap;}
+#hdr h1{font-size:8px;color:var(--green);letter-spacing:1px;white-space:nowrap;}
+.sbar{display:flex;gap:7px;align-items:center;flex-wrap:nowrap;}
+.stt{display:flex;align-items:center;gap:3px;font-size:6px;white-space:nowrap;}
+.stt.warn .val{color:var(--red);animation:blink .7s step-end infinite;}
+.weather-badge{font-size:9px;padding:2px 4px;border:1px solid var(--border);background:#21262d;}
+@keyframes blink{50%{opacity:0;}}
+.hbtn{background:#21262d;border:2px solid var(--border);color:var(--dim);font-family:'Press Start 2P',monospace;font-size:5px;padding:4px 6px;cursor:pointer;}
+.hbtn:hover{border-color:var(--green);color:var(--text);}
+
+/* move tool highlight */
+.tile-movefrom{outline:2px solid var(--cyan);}
+.ptitle{color:var(--dim);font-size:5px;letter-spacing:1px;margin-bottom:2px;}
+.tbtn{background:#21262d;border:2px solid var(--border);color:var(--text);font-family:'Press Start 2P',monospace;font-size:5px;padding:5px 4px;cursor:pointer;display:flex;align-items:center;gap:4px;width:100%;position:relative;transition:border-color .1s;}
+.tbtn:hover{border-color:var(--green);}
+.tbtn.active{border-color:var(--green);background:#1a2e1a;}
+.tbtn.active::after{content:'◀';position:absolute;right:4px;color:var(--green);font-size:5px;}
+.ti{font-size:12px;min-width:16px;text-align:center;}
+.tn{font-size:5px;}.tc{font-size:4px;color:var(--yellow);}
+.tbtn.red .tn{color:var(--red);}
+hr.sep{border:none;border-top:1px solid var(--border);margin:3px 0;}
+.ibox{background:#21262d;border:1px solid var(--border);padding:5px;}
+.ibox h3{font-size:5px;color:var(--dim);margin-bottom:4px;}
+.ir{display:flex;justify-content:space-between;margin-bottom:2px;font-size:5px;}
+.ir .l{color:var(--dim);}.ir .v{color:var(--text);}
+.ok{color:var(--green)!important;}.bad{color:var(--red)!important;}.mid{color:var(--yellow)!important;}
+.mbar{width:100%;height:5px;background:#30363d;border:1px solid var(--border);margin-top:2px;}
+.mbf{height:100%;transition:width .4s;}
+
+/* CANVAS */
+#cw{position:relative;overflow:hidden;background:#2d5a1b;}
+#gc{display:block;cursor:crosshair;}
+.hudbtn{position:absolute;background:rgba(22,27,34,.88);border:2px solid;font-family:'Press Start 2P',monospace;font-size:5px;padding:4px 6px;cursor:pointer;z-index:5;}
+#bufbtn{top:8px;right:8px;border-color:var(--blue);color:var(--blue);}
+#bufbtn.on{background:rgba(52,152,219,.15);}
+#sndbtn{bottom:8px;right:8px;border-color:#8e44ad;color:#9b59b6;}
+#daybtn2{bottom:8px;left:8px;border-color:var(--green);color:var(--green);font-size:6px;padding:6px 10px;}
+
+/* BOTTOM */
+#bot{grid-column:1/-1;background:var(--panel);border-top:2px solid var(--border);display:flex;align-items:center;padding:4px 8px;gap:8px;}
+.tiptxt{font-family:'VT323',monospace;font-size:12px;color:var(--dim);}
+#log{font-family:'VT323',monospace;font-size:13px;display:flex;flex-direction:column;gap:1px;max-height:62px;overflow-y:auto;}
+.le{padding:1px 3px;}
+.le.info{color:#58a6ff;}.le.warn{color:var(--yellow);}.le.danger{color:var(--red);}.le.good{color:var(--green);}
+
+/* ══ CONFLICT POPUP ══ */
+#conflict-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;
+  display:none;align-items:center;justify-content:center;
+}
+#conflict-overlay.show{display:flex;}
+#conflict-box{
+  background:var(--panel);border:3px solid var(--red);
+  max-width:380px;width:92%;animation:popIn .2s ease;
+}
+@keyframes popIn{from{transform:scale(0.8);opacity:0;}to{transform:scale(1);opacity:1;}}
+#cf-hdr{background:#2a0a0a;padding:10px 14px;border-bottom:2px solid var(--red);display:flex;align-items:center;gap:8px;}
+#cf-icon{font-size:22px;}
+#cf-title{font-size:8px;color:var(--red);}
+#cf-body{padding:12px 14px;}
+#cf-desc{font-size:5px;line-height:2;color:var(--text);margin-bottom:10px;white-space:pre-line;}
+#cf-location{font-size:5px;color:var(--dim);margin-bottom:10px;font-family:'VT323',monospace;font-size:12px;}
+.cf-options{display:flex;flex-direction:column;gap:6px;}
+.cf-opt{
+  background:#21262d;border:2px solid var(--border);
+  color:var(--text);font-family:'Press Start 2P',monospace;
+  font-size:5px;padding:8px 10px;cursor:pointer;text-align:left;
+  line-height:1.8;transition:border-color .1s;
+}
+.cf-opt:hover{border-color:var(--yellow);}
+.cf-opt .opt-label{color:var(--yellow);font-size:5px;}
+.cf-opt .opt-desc{color:var(--dim);font-size:4px;margin-top:3px;}
+
+/* ══ RESULT POPUP ══ */
+#result-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;
+  display:none;align-items:center;justify-content:center;
+}
+#result-overlay.show{display:flex;}
+#result-box{
+  background:var(--panel);max-width:340px;width:90%;
+  animation:popIn .2s ease;
+}
+#result-box.correct{border:3px solid var(--green);}
+#result-box.wrong{border:3px solid var(--red);}
+#res-hdr{padding:10px 14px;border-bottom:2px solid var(--border);}
+#res-hdr.correct-h{background:#0a2a0a;}
+#res-hdr.wrong-h{background:#2a0a0a;}
+#res-icon{font-size:20px;}
+#res-title{font-size:8px;margin-top:4px;}
+#res-body{padding:12px 14px;font-size:5px;line-height:2;color:var(--text);white-space:pre-line;}
+#res-followup{padding:0 14px 12px;display:none;}
+#res-followup .cf-opt{font-size:4px;}
+#res-close{display:block;margin:0 14px 12px;background:var(--green);color:#000;border:none;font-family:'Press Start 2P',monospace;font-size:5px;padding:7px;cursor:pointer;width:calc(100% - 28px);}
+
+/* NOTIF */
+#notif{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:var(--panel);border:3px solid var(--yellow);padding:14px 18px;text-align:center;z-index:50;transition:transform .15s;max-width:230px;pointer-events:none;}
+#notif.show{transform:translate(-50%,-50%) scale(1);pointer-events:all;}
+#notif h2{font-size:7px;color:var(--yellow);margin-bottom:7px;}
+#notif p{font-size:5px;color:var(--text);line-height:1.9;margin-bottom:10px;white-space:pre-line;}
+#notif button{background:var(--yellow);color:#000;border:none;font-family:'Press Start 2P',monospace;font-size:5px;padding:6px 10px;cursor:pointer;}
+
+/* TUTORIAL */
+#tutorial{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:100;display:flex;align-items:center;justify-content:center;}
+#tbox{background:var(--panel);border:3px solid var(--green);max-width:520px;width:92%;}
+#thdr{background:#1a2e1a;padding:12px 16px;border-bottom:2px solid var(--green);display:flex;align-items:center;gap:8px;}
+#thdr h2{font-size:9px;color:var(--green);}
+#tbody{padding:14px 16px;}
+.tslide{display:none;flex-direction:column;gap:8px;}
+.tslide.active{display:flex;}
+.tslide h3{font-size:7px;color:var(--yellow);}
+.tslide p{font-size:6px;line-height:2;color:var(--text);}
+.demo{background:#21262d;border:1px solid var(--border);padding:8px;font-family:'VT323',monospace;font-size:14px;color:var(--green);line-height:1.6;}
+.tnav{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);}
+.tnav .pbtn{background:var(--green);color:#000;border:none;font-family:'Press Start 2P',monospace;font-size:6px;padding:7px 12px;cursor:pointer;}
+.tnav .sbtn{background:#21262d;color:var(--text);border:2px solid var(--border);font-family:'Press Start 2P',monospace;font-size:6px;padding:7px 12px;cursor:pointer;}
+.dots{display:flex;gap:5px;}
+.dot{width:6px;height:6px;background:var(--border);}
+.dot.on{background:var(--green);}
+#tskip{font-size:5px;color:var(--dim);background:none;border:none;font-family:'Press Start 2P',monospace;cursor:pointer;}
+
+/* WEATHER RAIN */
+#rain-layer{position:absolute;inset:0;pointer-events:none;z-index:4;display:none;}
+#rain-layer.active{display:block;}
+
+/* MEASURE TOOL */
+#measure-info{position:absolute;top:8px;left:8px;background:rgba(22,27,34,.9);border:1px solid var(--blue);padding:6px 8px;font-size:5px;color:var(--blue);display:none;pointer-events:none;z-index:6;}
+
+::-webkit-scrollbar{width:3px;} ::-webkit-scrollbar-track{background:var(--panel);} ::-webkit-scrollbar-thumb{background:var(--border);}
+</style>
+</head>
+<body>
+
+<!-- ══ TUTORIAL ══ -->
+<div id="tutorial">
+  <div id="tbox">
+    <div id="thdr"><span style="font-size:20px">🏙️</span><h2>SELAMAT DATANG DI GEOKOTA v2</h2></div>
+    <div id="tbody">
+      <div class="tslide active" id="sl0">
+        <h3>🌍 APA ITU GEOKOTA?</h3>
+        <p>Game manajemen kota berbasis <span style="color:var(--blue)">analisis geospasial</span>.<br><br>Kamu jadi kepala daerah yang harus membangun kota dan menyelesaikan konflik dengan ilmu <b style="color:var(--green)">GIS</b>!</p>
+        <div class="demo">🗺️ Peta Grid  → kota kamu<br>🏠 Rumah     → datangkan penduduk<br>🗑️ TPS       → kelola sampah<br>🌊 Sungai    → batas alam kota<br>📡 Buffer    → radius layanan GIS</div>
+      </div>
+      <div class="tslide" id="sl1">
+        <h3>🔨 CARA MEMBANGUN</h3>
+        <p>Pilih alat di panel kiri lalu <b style="color:var(--yellow)">klik tile</b> di peta untuk membangun.</p>
+        <div class="demo">🛣️ JALAN    → Rp 10<br>🏠 RUMAH    → Rp 50<br>🗑️ TPS      → Rp 80<br>🌳 TAMAN    → Rp 30<br>🌊 SUNGAI   → Rp 5<br>💣 HANCURKAN→ +Rp 5 refund</div>
+        <p>Hari berganti OTOMATIS setiap 30 detik!</p>
+      </div>
+      <div class="tslide" id="sl2">
+        <h3>🌊 SUNGAI & KONFLIK LAHAN</h3>
+        <p>Kota punya <b style="color:var(--blue)">sungai alami</b>.<br><br>⚠️ Membangun <b style="color:var(--yellow)">rumah terlalu dekat</b> sungai (≤2 petak) = konflik hak lahan!<br><br>⚠️ TPS dekat sungai (≤2 petak) = risiko pencemaran air!</p>
+        <div class="demo">🌊 Sungai = zona buffer alami<br>📏 Jarak aman: ≥ 3 petak<br>❌ Terlalu dekat = denda + konflik</div>
+      </div>
+      <div class="tslide" id="sl3">
+        <h3>⚡ KONFLIK & SOLUSI GIS</h3>
+        <p>Konflik muncul otomatis saat kondisi terpenuhi:</p>
+        <div class="demo">🗑️ 5+ rumah berdekatan tanpa TPS<br>   → Konflik sampah menumpuk<br><br>🏘️ 3 rumah dalam 2 petak<br>   → Konflik kepadatan/lahan<br><br>🌊 Bangunan ≤2 petak dari sungai<br>   → Konflik sengketa lahan<br><br>🌧️ Cuaca hujan 3 hari berturut<br>   → Banjir, konflik infrastruktur</div>
+      </div>
+      <div class="tslide" id="sl4">
+        <h3>📏 PENGUKURAN GIS</h3>
+        <p>Gunakan alat <b style="color:var(--cyan)">UKUR</b> untuk mengukur jarak antar tile.</p>
+        <div class="demo">1. Klik UKUR di panel kiri<br>2. Klik tile awal<br>3. Klik tile akhir<br>4. Jarak tampil dalam petak & meter<br>   (1 petak = 10 meter)</div>
+        <p style="color:var(--yellow)">Tips: Gunakan UKUR untuk cek jarak TPS ke rumah dan jarak sungai!</p>
+      </div>
+      <div class="tslide" id="sl5">
+        <h3>🌤️ CUACA & PAJAK OTOMATIS</h3>
+        <p>Cuaca berubah otomatis dan mempengaruhi kota:</p>
+        <div class="demo">☀️ PANAS   → +10% pendapatan pajak<br>🌧️ HUJAN   → -20% pajak, sampah +50%<br>⛅ MENDUNG → normal<br><br>⏰ Hari berganti tiap 30 detik<br>💰 Pajak masuk tiap pergantian hari<br>🚨 Konflik cek otomatis setiap hari!</div>
+      </div>
+      <div class="tslide" id="sl6">
+        <h3>🎮 SIAP BERMAIN!</h3>
+        <p>Tips strategi:</p>
+        <div class="demo">1. Bangun jalan dulu<br>2. Bangun 4-5 Rumah<br>3. Bangun TPS di tengah<br>   (≥3 petak dari sungai!)<br>4. Cek buffer & measurement<br>5. Respon konflik dengan bijak!<br><br>⚠️ Jawab konflik SALAH = penduduk<br>   marah dan berkurang!</div>
+        <p style="color:var(--green)">Selamat membangun kota! 🏙️</p>
+      </div>
+    </div>
+    <div class="tnav">
+      <button class="sbtn" id="tprev" onclick="tutNav(-1)" style="visibility:hidden">◀ PREV</button>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+        <div class="dots" id="tdots"></div>
+        <button id="tskip" onclick="closeTut()">LEWATI</button>
+      </div>
+      <button class="pbtn" id="tnext" onclick="tutNav(1)">NEXT ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONFLICT POPUP ══ -->
+<div id="conflict-overlay">
+  <div id="conflict-box">
+    <div id="cf-hdr">
+      <span id="cf-icon">⚠️</span>
+      <span id="cf-title">KONFLIK MUNCUL!</span>
+    </div>
+    <div id="cf-body">
+      <div id="cf-location"></div>
+      <div id="cf-desc"></div>
+      <div class="cf-options" id="cf-options"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULT POPUP ══ -->
+<div id="result-overlay">
+  <div id="result-box">
+    <div id="res-hdr">
+      <div id="res-icon"></div>
+      <div id="res-title"></div>
+    </div>
+    <div id="res-body"></div>
+    <div id="res-followup">
+      <div style="font-size:5px;color:var(--dim);margin-bottom:6px;">LANGKAH LANJUTAN:</div>
+      <div id="res-followup-opts"></div>
+    </div>
+    <button id="res-close" onclick="closeResult()">✓ LANJUTKAN</button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+
+  <div id="hdr">
+    <h1>🏙️ GEOKOTA</h1>
+    <div class="sbar">
+      <div class="stt"><span>💰</span><span class="val" id="sm">500</span></div>
+      <div class="stt"><span>👥</span><span class="val" id="sp">0</span></div>
+      <div class="stt"><span>😊</span><span class="val" id="sh">100%</span></div>
+      <div class="stt" id="swbox"><span>🗑️</span><span class="val" id="sw">0%</span></div>
+      <div class="stt"><span>📅</span><span class="val" id="sd">Hari 1</span></div>
+      <div class="weather-badge" id="weather-badge">☀️</div>
+    </div>
+    <button class="hbtn" onclick="openTut()">❓ PANDUAN</button>
+  </div>
+
+  <div id="lpanel">
+    <div class="ptitle">▣ ALAT BANGUN</div>
+    <button class="tbtn active" data-tool="road"    onclick="selT(this,'road')">    <span class="ti">🛣️</span><div><div class="tn">JALAN</div>    <div class="tc">-10 💰</div></div></button>
+    <button class="tbtn"        data-tool="house"   onclick="selT(this,'house')">   <span class="ti">🏠</span><div><div class="tn">RUMAH</div>    <div class="tc">-50 💰</div></div></button>
+    <button class="tbtn"        data-tool="tps"     onclick="selT(this,'tps')">     <span class="ti">🗑️</span><div><div class="tn">TPS</div>      <div class="tc">-80 💰</div></div></button>
+    <button class="tbtn"        data-tool="park"    onclick="selT(this,'park')">    <span class="ti">🌳</span><div><div class="tn">TAMAN</div>    <div class="tc">-30 💰</div></div></button>
+    <button class="tbtn"        data-tool="river"   onclick="selT(this,'river')">   <span class="ti">🌊</span><div><div class="tn">SUNGAI</div>   <div class="tc">-5 💰</div></div></button>
+    <hr class="sep">
+    <div class="ptitle">▣ AKSI</div>
+    <button class="tbtn red"    data-tool="bulldoze" onclick="selT(this,'bulldoze')"><span class="ti">💣</span><div><div class="tn">HANCURKAN</div><div class="tc">+5 💰</div></div></button>
+    <button class="tbtn"        data-tool="inspect"  onclick="selT(this,'inspect')"> <span class="ti">🔍</span><div><div class="tn">INSPEKSI</div> <div class="tc">gratis</div></div></button>
+    <button class="tbtn"        data-tool="measure"  onclick="selT(this,'measure')"> <span class="ti">📏</span><div><div class="tn">UKUR</div>     <div class="tc">gratis</div></div></button>
+    <button class="tbtn"        data-tool="move"     onclick="selT(this,'move')">    <span class="ti">🔀</span><div><div class="tn">PINDAH</div>   <div class="tc">gratis</div></div></button>
+  </div>
+
+  <!-- Tab toggle di luar #cw agar tidak overlap canvas -->
+  <button id="ltab" class="panel-tab" onclick="togglePanel('l')" title="Tutup/buka panel kiri">◀ ALAT</button>
+  <button id="rtab" class="panel-tab" onclick="togglePanel('r')" title="Tutup/buka panel kanan">STATUS ▶</button>
+
+  <div id="cw">
+    <canvas id="gc"></canvas>
+    <canvas id="rain-layer" id="rain-canvas"></canvas>
+    <button id="bufbtn" class="hudbtn on" onclick="togBuf()">📡 BUFFER ON</button>
+    <button id="sndbtn" class="hudbtn"    onclick="togSnd()">🔊 SFX ON</button>
+    <button id="daybtn2" class="hudbtn"   onclick="nextDay()">⏭ NEXT DAY</button>
+    <div id="measure-info">📏 Klik tile pertama...</div>
+    <div id="notif">
+      <h2 id="ntitle">⚠️</h2>
+      <p  id="nbody">...</p>
+      <button onclick="closeNotif()">OK</button>
+    </div>
+  </div>
+
+  <div id="rpanel">
+    <div class="ptitle">▣ STATUS KOTA</div>
+    <div class="ibox">
+      <h3>📊 STATISTIK</h3>
+      <div class="ir"><span class="l">Rumah</span>    <span class="v" id="ih">0</span></div>
+      <div class="ir"><span class="l">TPS</span>      <span class="v" id="it">0</span></div>
+      <div class="ir"><span class="l">Sungai</span>   <span class="v" id="iriv">0</span></div>
+      <div class="ir"><span class="l">Coverage</span> <span class="v ok" id="ic">0/0</span></div>
+      <div class="ir"><span class="l">Penduduk</span> <span class="v" id="in">0</span></div>
+    </div>
+    <div class="ibox">
+      <h3>🗑️ SAMPAH</h3>
+      <div class="ir"><span class="l">✅ Terlayani</span>  <span class="v ok"  id="isrv">0</span></div>
+      <div class="ir"><span class="l">❌ Tidak</span>      <span class="v bad" id="iuns">0</span></div>
+      <div class="mbar"><div class="mbf" id="bwaste" style="width:0%;background:var(--green)"></div></div>
+    </div>
+    <div class="ibox">
+      <h3>😊 KEBAHAGIAAN</h3>
+      <div class="ir"><span class="l">Skor</span><span class="v ok" id="ihap">100%</span></div>
+      <div class="mbar"><div class="mbf" id="bhappy" style="width:100%;background:var(--green)"></div></div>
+    </div>
+    <div class="ibox">
+      <h3>🌤️ CUACA HARI INI</h3>
+      <div class="ir"><span class="l">Cuaca</span><span class="v" id="iweather">☀️ Cerah</span></div>
+      <div class="ir"><span class="l">Hari Hujan</span><span class="v" id="irainday">0</span></div>
+      <div class="ir"><span class="l">Efek</span><span class="v mid" id="iweffect">Normal</span></div>
+    </div>
+    <div class="ibox">
+      <h3>📡 GIS CONCEPT</h3>
+      <div style="font-size:4px;color:var(--dim);line-height:2.1">
+        TPS memancarkan radius<br>layanan <b style="color:var(--blue)">3 petak</b>.<br>Sungai = batas alam.<br>Jarak aman TPS dr<br>sungai: <b style="color:var(--yellow)">≥3 petak</b>.<br><br>Konsep:<br><b style="color:var(--yellow)">BUFFER ANALYSIS</b><br><b style="color:var(--cyan)">SPATIAL MEASUREMENT</b>
+      </div>
+    </div>
+  </div>
+
+  <div id="bot">
+    <div class="tiptxt" style="white-space:nowrap">◀▶ = buka/tutup panel | 🔀 = pindah objek</div>
+    <div id="log" style="flex:1"></div>
+    <button onclick="nextDay()" style="white-space:nowrap;background:var(--green);color:#000;border:none;font-family:'Press Start 2P',monospace;font-size:6px;padding:7px 10px;cursor:pointer;">⏭ NEXT DAY</button>
+  </div>
+
+</div>
+
+<script>
+// ═══════════ AUDIO ═══════════
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+let sfxOn = true;
+document.addEventListener('pointerdown', () => { if(AC.state==='suspended') AC.resume(); }, {once:true});
+
+function sfx(freq, dur, type='square', vol=0.13) {
+  if(!sfxOn || AC.state === 'suspended') return;
+  try {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.connect(g); g.connect(AC.destination);
+    o.type = type; o.frequency.setValueAtTime(freq, AC.currentTime);
+    g.gain.setValueAtTime(vol, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+    o.start(); o.stop(AC.currentTime + dur);
+  } catch(e) {}
+}
+function sfxClick()   { sfx(440,.06); sfx(660,.05); }
+function sfxBuild()   { [330,500,660].forEach((f,i)=>setTimeout(()=>sfx(f,.08),i*55)); }
+function sfxError()   { sfx(160,.18,'sawtooth',.2); setTimeout(()=>sfx(130,.14,'sawtooth',.16),110); }
+function sfxNextDay() { [330,392,440,523].forEach((f,i)=>setTimeout(()=>sfx(f,.08),i*65)); }
+function sfxWarn()    { [220,185,220,185].forEach((f,i)=>setTimeout(()=>sfx(f,.12,'sawtooth',.22),i*120)); }
+function sfxConflict(){ [330,220,330,180].forEach((f,i)=>setTimeout(()=>sfx(f,.14,'sawtooth',.25),i*100)); }
+function sfxSuccess() { [440,523,659,784].forEach((f,i)=>setTimeout(()=>sfx(f,.1),i*80)); }
+function sfxFail()    { [330,262,220,175].forEach((f,i)=>setTimeout(()=>sfx(f,.12,'sawtooth',.2),i*90)); }
+function sfxDemo()    { [262,330,392,523,659].forEach((f,i)=>setTimeout(()=>sfx(f,.1),i*70)); }
+function togSnd(){ sfxOn=!sfxOn; $('sndbtn').textContent=sfxOn?'🔊 SFX ON':'🔇 SFX OFF'; if(sfxOn)sfxClick(); }
+
+// ═══════════ TUTORIAL ═══════════
+let tutPage = 0;
+const SLIDES = 7;
+function buildDots(){
+  const c=$('tdots'); c.innerHTML='';
+  for(let i=0;i<SLIDES;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i===tutPage?' on':'');
+    c.appendChild(d);
+  }
+}
+function tutNav(dir){
+  sfxClick();
+  document.getElementById('sl'+tutPage).classList.remove('active');
+  tutPage=Math.max(0,Math.min(SLIDES-1,tutPage+dir));
+  document.getElementById('sl'+tutPage).classList.add('active');
+  buildDots();
+  $('tprev').style.visibility=tutPage===0?'hidden':'visible';
+  const nb=$('tnext');
+  if(tutPage===SLIDES-1){nb.textContent='▶ MULAI!';nb.onclick=()=>{sfxDemo();closeTut();};}
+  else{nb.textContent='NEXT ▶';nb.onclick=()=>tutNav(1);}
+}
+function openTut(){ sfxClick(); tutPage=-1; tutNav(1); $('tutorial').style.display='flex'; }
+function closeTut(){ $('tutorial').style.display='none'; startAutoDay(); }
+buildDots();
+
+// ═══════════ PANEL TOGGLE ═══════════
+function togglePanel(side){
+  sfxClick();
+  const app=document.getElementById('app');
+  const cls = side==='l'?'lhide':'rhide';
+  const tab  = side==='l'?$('ltab'):$('rtab');
+  const isHidden = app.classList.toggle(cls);
+  if(side==='l'){
+    tab.textContent = isHidden ? '▶ ALAT' : '◀ ALAT';
+    tab.style.left  = isHidden ? '0px' : '190px';
+  } else {
+    tab.textContent  = isHidden ? '◀ STATUS' : 'STATUS ▶';
+    tab.style.right  = isHidden ? '0px' : '190px';
+  }
+  tab.style.borderColor = isHidden ? 'var(--green)' : 'var(--border)';
+  tab.style.color       = isHidden ? 'var(--green)'  : 'var(--dim)';
+  setTimeout(()=>{resize();},280);
+}
+
+// ═══════════ MOVE TOOL STATE ═══════════
+const TILE=32, COLS=24, ROWS=18, BUF=3;
+const COSTS={road:10,house:50,tps:80,park:30,river:5};
+
+// Weather system
+const WEATHERS = [
+  {id:'sunny',  icon:'☀️', name:'Cerah',   taxMult:1.1,  wasteExtra:0,   effect:'Pajak +10%'},
+  {id:'cloudy', icon:'⛅', name:'Mendung', taxMult:1.0,  wasteExtra:0,   effect:'Normal'},
+  {id:'rainy',  icon:'🌧️', name:'Hujan',   taxMult:0.8,  wasteExtra:0.5, effect:'Pajak -20%, Sampah +50%'},
+];
+
+let G = {
+  money:500, day:1, happy:100, penduduk:0, tool:'road', showBuf:true,
+  weather: WEATHERS[0], rainDays:0, pendingConflict:null, conflictQueue:[],
+  measureStart:null, measureEnd:null, moveFrom:null,
+  autoTimer:null, autoInterval:30,
+  grid: Array.from({length:ROWS},(_,r)=>
+    Array.from({length:COLS},(_,c)=>({type:'empty',variant:(r*31+c*17)%4,served:null})))
+};
+let npcs=[], npcT=0;
+let autoCountdown = 30;
+let autoTimerInterval = null;
+
+// ═══════════ CANVAS ═══════════
+const cw     = document.getElementById('cw');
+const canvas = document.getElementById('gc');
+const ctx    = canvas.getContext('2d');
+
+// Rain canvas
+const rainCanvas = document.createElement('canvas');
+rainCanvas.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:4;';
+cw.appendChild(rainCanvas);
+const rctx = rainCanvas.getContext('2d');
+let rainDrops = [];
+
+function resize(){
+  canvas.width  = cw.clientWidth;
+  canvas.height = cw.clientHeight;
+  rainCanvas.width  = cw.clientWidth;
+  rainCanvas.height = cw.clientHeight;
+  drawAll();
+}
+window.addEventListener('resize', resize);
+
+// ── draw helpers ──
+const GR=['#2d5a1b','#3a7a24','#2a5219','#3d7f28'];
+
+function pxTile(x,y,a,b,v){
+  ctx.fillStyle=a; ctx.fillRect(x,y,TILE,TILE);
+  ctx.fillStyle=b;
+  for(let i=0;i<5;i++) ctx.fillRect(x+((v*7+i*17)&31),y+((v*11+i*13)&31),2,2);
+}
+
+function drawAll(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawTiles();
+  if(G.showBuf) drawBuffers();
+  drawRiverBuffers();
+  drawBuildings();
+  drawNPCs();
+  if(G.measureStart) drawMeasure();
+  if(G.moveFrom) drawMoveHighlight();
+}
+
+function drawTiles(){
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const t=G.grid[r][c],x=c*TILE,y=r*TILE;
+    if(t.type==='empty'){ pxTile(x,y,GR[0],GR[1],t.variant); }
+    else if(t.type==='road'){
+      ctx.fillStyle='#4a4a5a'; ctx.fillRect(x,y,TILE,TILE);
+      ctx.fillStyle='#3a3a4a'; ctx.fillRect(x+2,y+2,TILE-4,TILE-4);
+      ctx.fillStyle='#606070';
+      ctx.fillRect(x+TILE/2-1,y+2,2,6);
+      ctx.fillRect(x+TILE/2-1,y+TILE-8,2,6);
+    } else if(t.type==='river'){
+      // Animated river tiles
+      const phase = (Date.now()/600 + c*0.3 + r*0.2) % (Math.PI*2);
+      ctx.fillStyle='#1a5f8a'; ctx.fillRect(x,y,TILE,TILE);
+      ctx.fillStyle='#1e7ab5'; ctx.fillRect(x,y+4,TILE,TILE-8);
+      ctx.fillStyle='rgba(100,180,255,0.3)';
+      ctx.fillRect(x+2,y+8+Math.sin(phase)*2|0,28,4);
+      ctx.fillStyle='rgba(150,210,255,0.2)';
+      ctx.fillRect(x+4,y+16+Math.sin(phase+1)*2|0,20,3);
+    }
+  }
+  ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=1;
+  for(let r=0;r<=ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*TILE);ctx.lineTo(COLS*TILE,r*TILE);ctx.stroke();}
+  for(let c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*TILE,0);ctx.lineTo(c*TILE,ROWS*TILE);ctx.stroke();}
+}
+
+function drawBuffers(){
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(G.grid[r][c].type==='tps'){
+      const cx=c*TILE+TILE/2,cy=r*TILE+TILE/2,rad=BUF*TILE+TILE/2;
+      ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2);
+      ctx.fillStyle='rgba(243,156,18,.11)'; ctx.fill();
+      ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(243,156,18,.7)'; ctx.lineWidth=2; ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+}
+
+function drawRiverBuffers(){
+  // Show danger zone near rivers (2-tile buffer)
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(G.grid[r][c].type==='river'){
+      for(let dr=-2;dr<=2;dr++) for(let dc=-2;dc<=2;dc++){
+        const nr=r+dr, nc=c+dc;
+        if(nr<0||nr>=ROWS||nc<0||nc>=COLS) continue;
+        if(G.grid[nr][nc].type==='river') continue;
+        if(Math.abs(dr)===2||Math.abs(dc)===2) continue; // only 1-tile radius for visual
+        ctx.fillStyle='rgba(26,111,168,0.08)';
+        ctx.fillRect(nc*TILE,nr*TILE,TILE,TILE);
+      }
+    }
+  }
+}
+
+function drawBuildings(){
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const t=G.grid[r][c],x=c*TILE,y=r*TILE;
+    if(t.type==='house') dHouse(x,y,t.served,t.conflicted);
+    else if(t.type==='tps') dTPS(x,y,t.conflicted);
+    else if(t.type==='park') dPark(x,y);
+  }
+}
+
+function dHouse(x,y,srv,conf){
+  ctx.fillStyle='#8B4513'; ctx.fillRect(x+5,y+16,22,14);
+  ctx.fillStyle=srv===false?'#c0392b':conf?'#a0522d':'#e8d5b7'; ctx.fillRect(x+6,y+17,20,12);
+  ctx.fillStyle='#5d3a1a'; ctx.fillRect(x+13,y+22,6,7);
+  ctx.fillStyle=srv===false?'#ff6b6b':'#87ceeb';
+  ctx.fillRect(x+8,y+19,4,4); ctx.fillRect(x+20,y+19,4,4);
+  ctx.fillStyle='#a00000'; ctx.fillRect(x+4,y+8,24,8);
+  ctx.fillStyle='#c00000'; ctx.fillRect(x+8,y+4,16,5);
+  ctx.fillStyle='#555'; ctx.fillRect(x+20,y+2,4,7);
+  ctx.fillStyle='#333'; ctx.fillRect(x+19,y+2,6,2);
+  if(srv===false){ ctx.fillStyle='#ff0'; ctx.font='bold 11px monospace'; ctx.fillText('!',x+TILE/2-3,y+13); }
+  if(conf){ ctx.fillStyle='#f39c12'; ctx.font='bold 10px monospace'; ctx.fillText('⚠',x+2,y+12); }
+}
+
+function dTPS(x,y,conf){
+  ctx.fillStyle='#555'; ctx.fillRect(x+3,y+10,26,20);
+  ctx.fillStyle=conf?'#e74c3c':'#f39c12'; ctx.fillRect(x+5,y+12,22,16);
+  ctx.fillStyle=conf?'#c0392b':'#e67e22'; ctx.fillRect(x+6,y+13,6,14); ctx.fillRect(x+14,y+13,6,14);
+  ctx.fillStyle='#d68910'; ctx.fillRect(x+4,y+9,24,4);
+  ctx.fillStyle='#333'; ctx.fillRect(x+13,y+7,6,3);
+  ctx.fillStyle='#2ecc71'; ctx.fillRect(x+20,y+13,4,4);
+  ctx.fillStyle='#000'; ctx.font='5px monospace'; ctx.fillText('TPS',x+8,y+22);
+  if(conf){ ctx.fillStyle='#ff0'; ctx.font='bold 10px monospace'; ctx.fillText('⚠',x+2,y+12); }
+}
+
+function dPark(x,y){
+  ctx.fillStyle='#1a7a1a'; ctx.fillRect(x+2,y+20,28,10);
+  ctx.fillStyle='#5d3a1a'; ctx.fillRect(x+13,y+10,6,12);
+  ctx.fillStyle='#0a5c0a'; ctx.fillRect(x+8,y+12,16,8);
+  ctx.fillStyle='#1a7a1a'; ctx.fillRect(x+10,y+6,12,8);
+  ctx.fillStyle='#25a025'; ctx.fillRect(x+12,y+2,8,6);
+}
+
+function drawMeasure(){
+  if(!G.measureStart) return;
+  const [r1,c1]=G.measureStart;
+  ctx.fillStyle='rgba(0,200,255,0.3)'; ctx.fillRect(c1*TILE,r1*TILE,TILE,TILE);
+  ctx.strokeStyle='#00cfff'; ctx.lineWidth=2; ctx.strokeRect(c1*TILE+1,r1*TILE+1,TILE-2,TILE-2);
+  if(G.measureEnd){
+    const [r2,c2]=G.measureEnd;
+    ctx.fillStyle='rgba(0,200,255,0.3)'; ctx.fillRect(c2*TILE,r2*TILE,TILE,TILE);
+    ctx.strokeRect(c2*TILE+1,r2*TILE+1,TILE-2,TILE-2);
+    ctx.beginPath();
+    ctx.moveTo(c1*TILE+TILE/2,r1*TILE+TILE/2);
+    ctx.lineTo(c2*TILE+TILE/2,r2*TILE+TILE/2);
+    ctx.strokeStyle='#00cfff'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+    const dc=Math.abs(c2-c1), dr=Math.abs(r2-r1);
+    const dist=Math.sqrt(dc*dc+dr*dr).toFixed(1);
+    const meter=(dist*10).toFixed(0);
+    const mx=(c1+c2)*TILE/2+TILE/2, my=(r1+r2)*TILE/2+TILE/2;
+    ctx.fillStyle='rgba(22,27,34,.85)'; ctx.fillRect(mx-40,my-10,80,16);
+    ctx.fillStyle='#00cfff'; ctx.font='5px monospace';
+    ctx.fillText(`${dist} ptk = ${meter}m`,mx-38,my+3);
+  }
+}
+
+function drawMoveHighlight(){
+  if(!G.moveFrom) return;
+  const [r,c]=G.moveFrom;
+  // Pulsing cyan border around selected tile
+  const pulse = 0.5 + 0.5*Math.sin(Date.now()/200);
+  ctx.strokeStyle=`rgba(0,${150+Math.round(pulse*105)},255,${0.7+pulse*0.3})`;
+  ctx.lineWidth=3;
+  ctx.strokeRect(c*TILE+2,r*TILE+2,TILE-4,TILE-4);
+  ctx.fillStyle=`rgba(0,200,255,${0.08+pulse*0.08})`;
+  ctx.fillRect(c*TILE,r*TILE,TILE,TILE);
+  // Arrow label
+  ctx.fillStyle='rgba(22,27,34,.85)'; ctx.fillRect(c*TILE,r*TILE-14,56,12);
+  ctx.fillStyle='#00cfff'; ctx.font='4px monospace'; ctx.fillText('→ PINDAH KE?',c*TILE+2,r*TILE-5);
+}
+function spawnNPC(){
+  const hs=[];
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+    if(G.grid[r][c].type==='house') hs.push([r,c]);
+  if(!hs.length) return;
+  const [hr,hc]=hs[Math.random()*hs.length|0];
+  if(npcs.length >= G.penduduk*2+4) return;
+  npcs.push({x:hc*TILE+TILE/2,y:hr*TILE+TILE/2,
+    tx:Math.random()*COLS*TILE,ty:Math.random()*ROWS*TILE,
+    col:`hsl(${Math.random()*360},70%,65%)`,spd:.35+Math.random()*.4});
+}
+function updateNPCs(){
+  for(const n of npcs){
+    const dx=n.tx-n.x,dy=n.ty-n.y,d=Math.sqrt(dx*dx+dy*dy);
+    if(d<2){n.tx=Math.random()*COLS*TILE;n.ty=Math.random()*ROWS*TILE;}
+    else{n.x+=dx/d*n.spd;n.y+=dy/d*n.spd;}
+  }
+  while(npcs.length>G.penduduk*2+6) npcs.splice(0,1);
+}
+function drawNPCs(){
+  for(const n of npcs){
+    const nx=Math.round(n.x),ny=Math.round(n.y);
+    ctx.fillStyle=n.col; ctx.fillRect(nx-2,ny-4,4,6);
+    ctx.fillStyle='#ffe0bd'; ctx.fillRect(nx-2,ny-8,4,4);
+  }
+}
+
+// ── RAIN ──
+function initRain(){
+  rainDrops=[];
+  for(let i=0;i<120;i++){
+    rainDrops.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,spd:3+Math.random()*4,len:8+Math.random()*12});
+  }
+}
+function drawRain(){
+  if(G.weather.id!=='rainy'){rctx.clearRect(0,0,rainCanvas.width,rainCanvas.height);return;}
+  rctx.clearRect(0,0,rainCanvas.width,rainCanvas.height);
+  rctx.strokeStyle='rgba(120,180,255,0.45)'; rctx.lineWidth=1;
+  for(const d of rainDrops){
+    rctx.beginPath(); rctx.moveTo(d.x,d.y); rctx.lineTo(d.x-2,d.y+d.len); rctx.stroke();
+    d.y+=d.spd; d.x-=0.5;
+    if(d.y>rainCanvas.height){d.y=-d.len;d.x=Math.random()*rainCanvas.width;}
+  }
+}
+
+// ── BUFFER ANALYSIS ──
+function analyze(){
+  let srv=0,uns=0;
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const t=G.grid[r][c];
+    if(t.type==='house'){ t.served=covered(r,c); t.served?srv++:uns++; }
+  }
+  return{srv,uns};
+}
+function covered(hr,hc){
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+    if(G.grid[r][c].type==='tps'){
+      const dr=r-hr,dc=c-hc;
+      if(Math.sqrt(dr*dr+dc*dc)<=BUF) return true;
+    }
+  return false;
+}
+
+function distToRiver(row,col){
+  let minDist=999;
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+    if(G.grid[r][c].type==='river'){
+      const d=Math.sqrt((r-row)**2+(c-col)**2);
+      if(d<minDist) minDist=d;
+    }
+  return minDist;
+}
+
+function countNearbyHouses(row,col,radius){
+  let cnt=0;
+  for(let r=Math.max(0,row-radius);r<=Math.min(ROWS-1,row+radius);r++)
+    for(let c=Math.max(0,col-radius);c<=Math.min(COLS-1,col+radius);c++)
+      if(G.grid[r][c].type==='house'&&!(r===row&&c===col)) cnt++;
+  return cnt;
+}
+
+// ═══════════ CONFLICT SYSTEM ═══════════
+const CONFLICTS = {
+
+  waste_cluster: {
+    icon:'🗑️', title:'SAMPAH MENUMPUK!',
+    border:'var(--red)',
+    checkFn: ()=>{
+      const{uns}=analyze();
+      let hc=0; for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(G.grid[r][c].type==='house') hc++;
+      return uns>=5 && hc>=5;
+    },
+    desc: (loc)=>`Kawasan ${loc} darurat sampah!\n${analyze().uns} rumah tidak terlayani TPS.\n\nWarga mulai protes karena sampah\nmenumpuk di jalanan. Diperlukan\nsolusi segera berbasis GIS!`,
+    options:[
+      {
+        label:'A. Bangun TPS baru di pusat cluster',
+        desc:'Analisis buffer untuk penempatan optimal',
+        correct:true,
+        result:'✅ BENAR! TPS baru berhasil dibangun\ndi titik optimal hasil Buffer Analysis!\n\nSemua rumah kini masuk radius\nlayanan 3 petak.\n\n+Kebahagiaan warga +15\n💰 Denda sampah dihapus!',
+        followup:{
+          title:'LANGKAH LANJUTAN — BUFFER VERIFICATION',
+          desc:'Sekarang verifikasi dengan alat Buffer.\nTPS harus berjarak ≥3 petak dari sungai\ndan pusat dari cluster rumah.',
+          opts:[
+            {label:'Aktifkan Buffer View untuk verifikasi',action:'buf_on'},
+            {label:'Gunakan alat UKUR untuk konfirmasi jarak',action:'measure_hint'},
+          ]
+        },
+        effect:()=>{ G.happy=Math.min(100,G.happy+15); G.money+=50; addLog('TPS optimal dibangun! +50💰 bonus','good'); }
+      },
+      {
+        label:'B. Terapkan denda buang sampah sembarangan',
+        desc:'Solusi administratif tanpa analisis spasial',
+        correct:false,
+        result:'❌ SALAH! Denda saja tidak menyelesaikan\nmasalah infrastruktur!\n\nWarga makin marah karena tidak ada\nfasilitas yang memadai.\n\n😡 Penduduk berkurang -8\n😊 Kebahagiaan -20',
+        effect:()=>{ G.penduduk=Math.max(0,G.penduduk-8); G.happy=Math.max(0,G.happy-20); sfxFail(); addLog('Warga marah! Penduduk berkurang -8','danger'); }
+      },
+      {
+        label:'C. Tutup mata, tunggu hujan',
+        desc:'Tidak ada tindakan',
+        correct:false,
+        result:'❌ SALAH! Menunggu hujan tidak\nmenyelesaikan krisis sampah!\n\nPencemaran menyebar ke sungai.\n\n😡 Penduduk berkurang -12\n💰 Denda lingkungan -100',
+        effect:()=>{ G.penduduk=Math.max(0,G.penduduk-12); G.money=Math.max(0,G.money-100); sfxFail(); addLog('Pencemaran sungai! Denda -100💰','danger'); }
+      }
+    ]
+  },
+
+  land_conflict: {
+    icon:'📋', title:'SENGKETA HAK LAHAN!',
+    border:'var(--orange)',
+    checkFn: ()=>{
+      for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+        if(G.grid[r][c].type==='house'){
+          if(countNearbyHouses(r,c,1)>=3) return true;
+        }
+      }
+      return false;
+    },
+    getConflictLoc: ()=>{
+      for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+        if(G.grid[r][c].type==='house'){
+          if(countNearbyHouses(r,c,1)>=3) return [r,c];
+        }
+      }
+      return null;
+    },
+    desc: (loc)=>`Sengketa lahan di kawasan ${loc}!\n\n3+ rumah dibangun dalam radius 1 petak.\nWarga protes batas lahan tidak jelas.\n\nDiperlukan pengukuran spasial resmi\nuntuk menentukan batas lahan yang sah!`,
+    options:[
+      {
+        label:'A. Lakukan pengukuran batas lahan resmi',
+        desc:'Gunakan Spatial Measurement GIS untuk delineasi',
+        correct:true,
+        result:'✅ BENAR! Pengukuran GIS berhasil!\n\nBatas lahan resmi ditetapkan dengan\nkoordinat yang akurat.\n\n📏 Setiap lahan terverifikasi\n1 petak = 10 meter persegi\n\n+Kebahagiaan +10\n💰 Biaya kadaster: -30',
+        followup:{
+          title:'LANGKAH LANJUTAN — SPATIAL MEASUREMENT',
+          desc:'Gunakan alat UKUR untuk mengukur\njarak antar bangunan. Jarak minimum\nantar rumah = 1 petak (10 meter).',
+          opts:[
+            {label:'Gunakan alat UKUR untuk verifikasi jarak',action:'measure_hint'},
+            {label:'Tandai zona buffer lahan (non-buildable)',action:'zone_hint'},
+          ]
+        },
+        effect:()=>{ G.happy=Math.min(100,G.happy+10); G.money=Math.max(0,G.money-30); sfxSuccess(); addLog('Batas lahan resmi ditetapkan! +Kebahagiaan','good'); }
+      },
+      {
+        label:'B. Biarkan warga selesaikan sendiri',
+        desc:'Tidak ada intervensi pemerintah',
+        correct:false,
+        result:'❌ SALAH! Konflik lahan tanpa mediasi\nmenyebabkan perkelahian antar warga!\n\n😡 Penduduk berkurang -6\n😊 Kebahagiaan -15',
+        effect:()=>{ G.penduduk=Math.max(0,G.penduduk-6); G.happy=Math.max(0,G.happy-15); sfxFail(); }
+      },
+      {
+        label:'C. Gusur semua bangunan padat',
+        desc:'Penertiban paksa',
+        correct:false,
+        result:'❌ SALAH! Penggusaran paksa\nmenyebabkan kerusuhan!\n\n😡 Penduduk berkurang -15\n💰 Biaya keamanan -80',
+        effect:()=>{ G.penduduk=Math.max(0,G.penduduk-15); G.money=Math.max(0,G.money-80); sfxFail(); }
+      }
+    ]
+  },
+
+  river_pollution: {
+    icon:'🌊', title:'PENCEMARAN SUNGAI!',
+    border:'var(--blue)',
+    checkFn: ()=>{
+      for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+        if(G.grid[r][c].type==='tps' && distToRiver(r,c)<=2) return true;
+      return false;
+    },
+    getConflictLoc: ()=>{
+      for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+        if(G.grid[r][c].type==='tps' && distToRiver(r,c)<=2) return [r,c];
+      return null;
+    },
+    desc: (loc)=>`TPS di (${loc}) terlalu dekat sungai!\n\nJarak TPS ke sungai hanya ≤2 petak.\nLindi TPS mencemari sumber air warga!\n\nStandar GIS: TPS harus berjarak\nMINIMAL 3 petak dari badan air!`,
+    options:[
+      {
+        label:'A. Relokasi TPS ≥3 petak dari sungai',
+        desc:'Buffer Analysis: zona aman dari badan air',
+        correct:true,
+        result:'✅ BENAR! TPS berhasil direlokasi!\n\nBerdasarkan Buffer Analysis,\nTPS kini berjarak ≥3 petak dari\nsungai (≥30 meter).\n\nSungai kembali bersih! ✨\n+Kebahagiaan +12\n💰 Subsidi lingkungan +80',
+        followup:{
+          title:'LANGKAH LANJUTAN — RIVER BUFFER ZONE',
+          desc:'Tandai zona sempadan sungai:\n2 petak dari tepi sungai = zona larangan\nbangun TPS dan industri.\n\nGunakan BUFFER VIEW untuk cek.',
+          opts:[
+            {label:'Aktifkan Buffer View untuk cek zona aman',action:'buf_on'},
+            {label:'Ukur jarak TPS baru ke sungai',action:'measure_hint'},
+          ]
+        },
+        effect:()=>{
+          // Remove conflicted TPS markers
+          for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+            if(G.grid[r][c].type==='tps') G.grid[r][c].conflicted=false;
+          G.happy=Math.min(100,G.happy+12); G.money+=80;
+          sfxSuccess(); addLog('TPS direlokasi! Sungai bersih +80💰','good');
+        }
+      },
+      {
+        label:'B. Pasang filter di TPS',
+        desc:'Solusi teknis tanpa relokasi',
+        correct:false,
+        result:'❌ SALAH! Filter sederhana tidak\ncukup untuk mencegah pencemaran!\n\nAktivitas TPS dekat sungai tetap\nberbahaya. Sungai terus tercemar.\n\n😡 Penduduk -5, Denda -60💰',
+        effect:()=>{ G.penduduk=Math.max(0,G.penduduk-5); G.money=Math.max(0,G.money-60); sfxFail(); }
+      },
+      {
+        label:'C. Sosialisasi ke warga jangan buang sampah di sungai',
+        desc:'Kampanye tanpa solusi infrastruktur',
+        correct:false,
+        result:'❌ SALAH! Masalah bukan warga,\nmelainkan letak TPS yang salah!\n\nKampanye tanpa solusi spasial\ntidak efektif.\n\n😡 Penduduk -3, Kebahagiaan -10',
+        effect:()=>{ G.penduduk=Math.max(0,G.penduduk-3); G.happy=Math.max(0,G.happy-10); sfxFail(); }
+      }
+    ]
+  },
+
+  flood_risk: {
+    icon:'🌧️', title:'RISIKO BANJIR!',
+    border:'var(--blue)',
+    checkFn: ()=> G.weather.id==='rainy' && G.rainDays>=3,
+    desc: (loc)=>`Hujan ${G.rainDays} hari berturut-turut!\n\nSungai meluap, kawasan rendah\ndalam bahaya banjir.\n\nRumah yang dekat sungai (≤2 petak)\nberisiko tinggi terendam!`,
+    options:[
+      {
+        label:'A. Bangun tanggul di sempadan sungai',
+        desc:'Infrastruktur berbasis analisis spasial ketinggian',
+        correct:true,
+        result:'✅ BENAR! Tanggul dibangun!\n\nAnalisis spasial elevasi berhasil\nmenentukan lokasi tanggul optimal.\n\nKawasan sungai aman dari banjir.\n+Kebahagiaan +20\n💰 Dana bantuan bencana +120',
+        effect:()=>{ G.happy=Math.min(100,G.happy+20); G.money+=120; G.rainDays=0; sfxSuccess(); addLog('Tanggul dibangun! Banjir diatasi +120💰','good'); }
+      },
+      {
+        label:'B. Evakuasi warga di zona risiko',
+        desc:'Penanganan darurat sementara',
+        correct:false,
+        result:'❌ SALAH! Evakuasi hanya solusi\nsementara!\n\nTanpa infrastruktur, banjir terus\nberlulang setiap hujan deras.\n\n😡 Penduduk -10, Kebahagiaan -25',
+        effect:()=>{ G.penduduk=Math.max(0,G.penduduk-10); G.happy=Math.max(0,G.happy-25); sfxFail(); }
+      },
+      {
+        label:'C. Berdoa dan berharap banjir reda sendiri',
+        desc:'Tidak ada tindakan',
+        correct:false,
+        result:'❌ SALAH! Pasrah tanpa tindakan\nmenyebabkan kerugian besar!\n\nBanjir merusak bangunan & infrastruktur.\n😡 Penduduk -18\n💰 Kerugian -150',
+        effect:()=>{ G.penduduk=Math.max(0,G.penduduk-18); G.money=Math.max(0,G.money-150); sfxFail(); }
+      }
+    ]
+  },
+
+  malaria_outbreak: {
+    icon:'🦟', title:'WABAH MALARIA!',
+    border:'var(--purple)',
+    checkFn: ()=>{
+      let rivCount=0; for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(G.grid[r][c].type==='river') rivCount++;
+      let houseNearRiver=0;
+      for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+        if(G.grid[r][c].type==='house' && distToRiver(r,c)<=2) houseNearRiver++;
+      return rivCount>0 && houseNearRiver>=3 && G.penduduk>=10;
+    },
+    desc: (loc)=>`Wabah malaria di kawasan ${loc}!\n\n${countHousesNearRiver()} rumah berada dalam radius\n2 petak dari sungai.\n\nGenangan air jadi sarang nyamuk!\nWarga terinfeksi dan membutuhkan\nsolusi spasial segera.`,
+    options:[
+      {
+        label:'A. Fogging + relokasi rumah dari sempadan sungai',
+        desc:'Solusi kombinasi: medis + spasial GIS',
+        correct:true,
+        result:'✅ BENAR! Wabah berhasil diatasi!\n\nKombinasi fogging dan relokasi rumah\ndari zona sempadan sungai (≤2 petak)\nberhasil memutus rantai penyakit.\n\n+Kebahagiaan +18\n💰 Dana kesehatan +100',
+        effect:()=>{ G.happy=Math.min(100,G.happy+18); G.money+=100; sfxSuccess(); addLog('Wabah diatasi! Relokasi berhasil +100💰','good'); }
+      },
+      {
+        label:'B. Fogging saja tanpa relokasi',
+        desc:'Solusi medis tanpa perbaikan spasial',
+        correct:false,
+        result:'❌ KURANG TEPAT! Fogging mengurangi\nnyamuk sementara, tapi sumber\nmasalah (rumah di sempadan sungai)\ntidak diselesaikan.\n\nWabah akan kembali.\n😡 Penduduk -4, Kebahagiaan -8',
+        effect:()=>{ G.penduduk=Math.max(0,G.penduduk-4); G.happy=Math.max(0,G.happy-8); sfxFail(); }
+      },
+      {
+        label:'C. Karantina wilayah total',
+        desc:'Tindakan ekstrem tanpa analisis penyebab',
+        correct:false,
+        result:'❌ SALAH! Karantina total tanpa\nidentifikasi sumber masalah spasial\nmenyebabkan kepanikan.\n\n😡 Penduduk berkurang -14\n💰 Kerugian ekonomi -90',
+        effect:()=>{ G.penduduk=Math.max(0,G.penduduk-14); G.money=Math.max(0,G.money-90); sfxFail(); }
+      }
+    ]
+  }
+};
+
+function countHousesNearRiver(){
+  let cnt=0;
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+    if(G.grid[r][c].type==='house' && distToRiver(r,c)<=2) cnt++;
+  return cnt;
+}
+
+let conflictCooldown = {}; // track cooldown per conflict type
+
+function checkConflicts(){
+  const types = Object.keys(CONFLICTS);
+  for(const type of types){
+    const conf = CONFLICTS[type];
+    // Each conflict type has a cooldown of 3 days
+    if(conflictCooldown[type] && G.day - conflictCooldown[type] < 3) continue;
+    if(conf.checkFn()){
+      G.conflictQueue.push(type);
+      conflictCooldown[type] = G.day;
+    }
+  }
+  if(G.conflictQueue.length>0 && !document.getElementById('conflict-overlay').classList.contains('show')){
+    showNextConflict();
+  }
+}
+
+function showNextConflict(){
+  if(G.conflictQueue.length===0) return;
+  const type = G.conflictQueue.shift();
+  const conf = CONFLICTS[type];
+  sfxConflict();
+
+  // Mark conflicted buildings
+  if(type==='river_pollution'){
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+      if(G.grid[r][c].type==='tps' && distToRiver(r,c)<=2) G.grid[r][c].conflicted=true;
+  }
+  if(type==='land_conflict'){
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+      if(G.grid[r][c].type==='house' && countNearbyHouses(r,c,1)>=3) G.grid[r][c].conflicted=true;
+  }
+  drawAll();
+
+  let locTxt = 'Koordinat N/A';
+  if(conf.getConflictLoc){
+    const loc=conf.getConflictLoc();
+    if(loc) locTxt=`Lokasi: Tile (${loc[1]},${loc[0]}) | Grid-${loc[1]+1}×${loc[0]+1}`;
+  } else {
+    let maxRow=0,maxCol=0,maxCount=0;
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      const cnt=countNearbyHouses(r,c,3);
+      if(cnt>maxCount){maxCount=cnt;maxRow=r;maxCol=c;}
+    }
+    locTxt=`Cluster pusat: Tile (${maxCol},${maxRow})`;
+  }
+
+  $('cf-icon').textContent=conf.icon;
+  $('cf-title').textContent=conf.title;
+  $('cf-location').textContent=`📍 ${locTxt} | Hari ${G.day}`;
+  $('cf-desc').textContent=typeof conf.desc==='function'?conf.desc(locTxt):conf.desc;
+
+  const optDiv=$('cf-options'); optDiv.innerHTML='';
+  conf.options.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    btn.className='cf-opt';
+    btn.innerHTML=`<div class="opt-label">${opt.label}</div><div class="opt-desc">${opt.desc}</div>`;
+    btn.onclick=()=>resolveConflict(type,i);
+    optDiv.appendChild(btn);
+  });
+
+  $('conflict-box').style.borderColor=conf.border||'var(--red)';
+  $('cf-hdr').style.background=conf.border?conf.border.replace('var(--','').replace(')','').includes('orange')?'#2a1500':'#0a0a2a':'#2a0a0a';
+  $('conflict-overlay').classList.add('show');
+  stopAutoTimer(); // pause auto day during conflict
+}
+
+function resolveConflict(type, optIdx){
+  const conf=CONFLICTS[type];
+  const opt=conf.options[optIdx];
+  $('conflict-overlay').classList.remove('show');
+
+  // Apply effect
+  if(opt.effect) opt.effect();
+
+  // Clear conflicted markers
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) G.grid[r][c].conflicted=false;
+
+  // Show result
+  const rb=$('result-box'), rh=$('res-hdr');
+  rb.className=opt.correct?'correct':'wrong';
+  rh.className=opt.correct?'correct-h':'wrong-h';
+  $('res-icon').textContent=opt.correct?'✅':'❌';
+  $('res-title').textContent=opt.correct?'SOLUSI TEPAT!':'SOLUSI KURANG TEPAT';
+  $('res-title').style.color=opt.correct?'var(--green)':'var(--red)';
+  $('res-body').textContent=opt.result;
+
+  const fu=$('res-followup');
+  const fuOpts=$('res-followup-opts');
+  if(opt.correct && opt.followup){
+    fu.style.display='block';
+    fu.querySelector('div').textContent=opt.followup.title;
+    fuOpts.innerHTML='';
+    opt.followup.opts.forEach(fo=>{
+      const btn=document.createElement('button');
+      btn.className='cf-opt';
+      btn.innerHTML=`<div class="opt-label">${fo.label}</div>`;
+      btn.onclick=()=>{
+        sfxClick();
+        if(fo.action==='buf_on'){G.showBuf=true;$('bufbtn').textContent='📡 BUFFER ON';$('bufbtn').className='hudbtn on';}
+        if(fo.action==='measure_hint'){selT(document.querySelector('[data-tool="measure"]'),'measure'); addLog('Alat UKUR aktif — klik 2 tile untuk ukur jarak','info');}
+        if(fo.action==='zone_hint'){addLog('Ingat: zona sempadan 2 petak dari sungai = larangan bangunan TPS!','warn');}
+        closeResult();
+      };
+      fuOpts.appendChild(btn);
+    });
+    $('res-close').textContent='LEWATI →';
+  } else {
+    fu.style.display='none';
+    $('res-close').textContent='✓ LANJUTKAN';
+  }
+
+  if(opt.correct) sfxSuccess(); else sfxFail();
+  $('result-overlay').classList.add('show');
+  updateUI(); drawAll();
+}
+
+function closeResult(){
+  $('result-overlay').classList.remove('show');
+  // If more conflicts in queue
+  if(G.conflictQueue.length>0) setTimeout(showNextConflict, 500);
+  else startAutoTimer();
+}
+
+// ═══════════ WEATHER SYSTEM ═══════════
+function updateWeather(){
+  const roll=Math.random();
+  if(roll<0.5) G.weather=WEATHERS[0]; // sunny 50%
+  else if(roll<0.75) G.weather=WEATHERS[1]; // cloudy 25%
+  else G.weather=WEATHERS[2]; // rainy 25%
+
+  if(G.weather.id==='rainy') G.rainDays++;
+  else G.rainDays=0;
+
+  $('weather-badge').textContent=G.weather.icon;
+  $('iweather').textContent=G.weather.icon+' '+G.weather.name;
+  $('irainday').textContent=G.rainDays;
+  $('iweffect').textContent=G.weather.effect;
+  $('iweffect').className='v '+(G.weather.id==='sunny'?'ok':G.weather.id==='rainy'?'bad':'mid');
+
+  if(G.weather.id==='rainy') initRain();
+  else rainDrops=[];
+
+  addLog(`Cuaca hari ${G.day}: ${G.weather.icon} ${G.weather.name}`,'info');
+}
+
+// ═══════════ AUTO DAY TIMER ═══════════
+let autoInterval2 = null;
+let autoSeconds = 30;
+let autoPaused = false;
+
+function startAutoTimer(){
+  if(autoPaused) return;
+  clearInterval(autoInterval2);
+  autoSeconds=30;
+  autoInterval2=setInterval(()=>{
+    autoSeconds--;
+    $('daybtn2').textContent=`⏭ AUTO ${autoSeconds}s`;
+    if(autoSeconds<=0){
+      clearInterval(autoInterval2);
+      nextDay();
+    }
+  },1000);
+}
+
+function stopAutoTimer(){
+  clearInterval(autoInterval2);
+  $('daybtn2').textContent='⏭ NEXT DAY';
+}
+
+// ═══════════ NEXT DAY ═══════════
+function nextDay(){
+  stopAutoTimer();
+  sfxNextDay();
+  G.day++;
+  updateWeather();
+
+  let hc=0;
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(G.grid[r][c].type==='house') hc++;
+
+  const baseTax=hc*20;
+  const tax=Math.round(baseTax*G.weather.taxMult);
+  G.money+=tax;
+  if(tax>0) addLog(`+${tax}💰 pajak hari ${G.day} (${G.weather.icon} x${G.weather.taxMult})`,  'good');
+
+  if(hc>0){
+    G.penduduk=Math.min(hc*4, G.penduduk+Math.floor(hc*.8+1));
+    spawnNPC(); spawnNPC();
+  }
+
+  const{srv,uns}=analyze();
+  let unsEffective=G.weather.id==='rainy'?Math.ceil(uns*(1+G.weather.wasteExtra)):uns;
+  if(unsEffective>0&&G.day>2){
+    const pen=unsEffective*15; G.money=Math.max(0,G.money-pen);
+    sfxWarn();
+    addLog(`⚠️ ${unsEffective} rumah tak terlayani TPS! -${pen}💰`,'danger');
+  }
+
+  // Check malaria
+  if(G.happy<30&&G.penduduk>5){ sfxWarn(); }
+  if(G.money<=0){ sfxConflict(); showNotif('💸 BANGKRUT!','Keuangan kota habis!\nCoba lagi dengan strategi yang berbeda.'); return; }
+
+  // Check conflicts (with delay so next-day animation shows first)
+  setTimeout(checkConflicts, 400);
+
+  updateUI(); drawAll();
+
+  // Show day change notification in log
+  addLog(`═══ HARI ${G.day} ═══`,'info');
+
+  startAutoTimer();
+}
+
+// ═══════════ TOOL + CLICK ═══════════
+function selT(btn,tool){
+  sfxClick();
+  G.tool=tool;
+  G.measureStart=null; G.measureEnd=null; G.moveFrom=null;
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const mi=$('measure-info');
+  if(tool==='measure'){
+    mi.style.display='block';
+    mi.textContent='📏 Klik tile pertama...';
+  } else if(tool==='move'){
+    mi.style.display='block';
+    mi.textContent='🔀 Klik objek yang mau dipindah...';
+  } else { mi.style.display='none'; }
+}
+
+canvas.addEventListener('mousedown', e=>{
+  if(e.button!==0) return;
+  const rect=canvas.getBoundingClientRect();
+  const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+  const mx=(e.clientX-rect.left)*sx, my=(e.clientY-rect.top)*sy;
+  const c=Math.floor(mx/TILE), r=Math.floor(my/TILE);
+  if(c<0||c>=COLS||r<0||r>=ROWS) return;
+
+  const tile=G.grid[r][c];
+  const tool=G.tool;
+
+  if(tool==='measure'){
+    sfxClick();
+    if(!G.measureStart){
+      G.measureStart=[r,c];
+      $('measure-info').textContent=`📏 Tile 1: (${c},${r}) — Klik tile kedua...`;
+    } else {
+      G.measureEnd=[r,c];
+      const [r1,c1]=G.measureStart;
+      const dr=Math.abs(r-r1), dc=Math.abs(c-c1);
+      const dist=Math.sqrt(dr*dr+dc*dc).toFixed(2);
+      const meter=(dist*10).toFixed(1);
+      const mi=$('measure-info');
+      mi.textContent=`📏 Jarak: ${dist} petak = ${meter} meter`;
+      addLog(`📏 Ukur (${c1},${r1})→(${c},${r}): ${dist} petak = ${meter}m`,'info');
+      setTimeout(()=>{G.measureStart=null;G.measureEnd=null;mi.textContent='📏 Klik tile pertama...';drawAll();},3000);
+    }
+    drawAll(); return;
+  }
+
+  if(tool==='move'){
+    sfxClick();
+    if(!G.moveFrom){
+      // First click: select source tile
+      if(tile.type==='empty'){ sfxError(); addLog('Tidak ada objek di sini untuk dipindah!','warn'); return; }
+      G.moveFrom=[r,c];
+      addLog(`🔀 Pilih tile tujuan untuk pindahkan ${tile.type.toUpperCase()} dari (${c},${r})...`,'info');
+    } else {
+      // Second click: select destination
+      const [fr,fc]=G.moveFrom;
+      if(fr===r && fc===c){ G.moveFrom=null; addLog('Pemindahan dibatalkan.','warn'); drawAll(); return; }
+      const srcTile=G.grid[fr][fc];
+      if(tile.type!=='empty'){ sfxError(); addLog('Tile tujuan sudah terisi! Pilih tile kosong.','warn'); return; }
+      // Move
+      const movedType=srcTile.type;
+      tile.type=movedType; tile.conflicted=false; tile.served=null;
+      srcTile.type='empty'; srcTile.conflicted=false; srcTile.served=null;
+      G.moveFrom=null;
+      sfxBuild();
+      addLog(`🔀 ${movedType.toUpperCase()} dipindah dari (${fc},${fr}) ke (${c},${r})`, 'good');
+      // Check if moved TPS is near river warning
+      if(movedType==='tps' && distToRiver(r,c)<=2){
+        addLog(`⚠️ TPS baru di (${c},${r}) masih dekat sungai! Risiko konflik.`,'danger');
+        sfxWarn();
+      }
+      updateUI(); drawAll();
+    }
+    return;
+  }
+
+
+    sfxClick();
+    const dRiv=distToRiver(r,c).toFixed(1);
+    let msg;
+    if(tile.type==='house') msg=`Rumah di tile (${c},${r})\nStatus: ${tile.served?'✅ Terlayani TPS':'❌ Tidak terlayani!\nButuh TPS dalam radius\n3 petak.'}\nJarak ke sungai: ${dRiv} petak (${(dRiv*10).toFixed(0)}m)`;
+    else if(tile.type==='tps'){
+      const rv=distToRiver(r,c).toFixed(1);
+      msg=`TPS di tile (${c},${r})\nRadius buffer: ${BUF} petak\nJarak ke sungai: ${rv} petak (${(rv*10).toFixed(0)}m)\n${rv<=2?'⚠️ TERLALU DEKAT SUNGAI!':'✅ Jarak aman dari sungai'}`;
+    }
+    else if(tile.type==='river') msg=`Sungai di (${c},${r})\nZona sempadan: 2 petak\nLarangan: TPS & bangunan padat`;
+    else if(tile.type==='road') msg=`Jalan di (${c},${r})`;
+    else if(tile.type==='park') msg=`Taman di (${c},${r})\n+Kebahagiaan warga`;
+    else msg=`Tile kosong di (${c},${r})\nJarak ke sungai: ${dRiv} petak\n${dRiv<=2?'⚠️ Zona sempadan sungai!':'✅ Aman dibangun'}`;
+    showNotif('🔍 INSPEKSI',msg); return;
+  }
+
+  if(tool==='bulldoze'){
+    if(tile.type!=='empty'){
+      sfxBuild();
+      tile.type='empty'; tile.variant=Math.random()*4|0; tile.conflicted=false;
+      G.money+=5;
+      addLog('Bangunan dihancurkan +5💰','warn');
+      updateUI(); drawAll();
+    } else { sfxError(); addLog('Tidak ada bangunan!','warn'); }
+    return;
+  }
+
+  const cost=COSTS[tool];
+  if(cost===undefined) return;
+  if(tile.type!=='empty'){ sfxError(); addLog('Tile sudah terisi!','warn'); return; }
+  if(G.money<cost){ sfxError(); addLog(`💰 Kurang! Butuh ${cost}💰`,'danger'); return; }
+
+  // Warning for building near river
+  if(tool==='house' && distToRiver(r,c)<=2){
+    addLog(`⚠️ Rumah di (${c},${r}) dalam zona sempadan sungai!`,'warn');
+    sfxWarn();
+  }
+  if(tool==='tps' && distToRiver(r,c)<=2){
+    addLog(`⚠️ TPS di (${c},${r}) TERLALU DEKAT sungai! Risiko konflik!`,'danger');
+    sfxWarn();
+  }
+
+  sfxBuild();
+  G.grid[r][c].type=tool;
+  G.grid[r][c].conflicted=false;
+  G.money-=cost;
+  addLog(`Bangun ${tool.toUpperCase()} di (${c},${r}) -${cost}💰`,'info');
+  updateUI(); drawAll();
+});
+
+canvas.addEventListener('mousemove', e=>{
+  const rect=canvas.getBoundingClientRect();
+  const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+  const mx=(e.clientX-rect.left)*sx, my=(e.clientY-rect.top)*sy;
+  const c=Math.floor(mx/TILE), r=Math.floor(my/TILE);
+  drawAll();
+  if(c>=0&&c<COLS&&r>=0&&r<ROWS){
+    ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=2;
+    ctx.strokeRect(c*TILE+1,r*TILE+1,TILE-2,TILE-2);
+    if(G.tool==='tps'){
+      const cx2=c*TILE+TILE/2,cy2=r*TILE+TILE/2,rad=BUF*TILE+TILE/2;
+      ctx.beginPath(); ctx.arc(cx2,cy2,rad,0,Math.PI*2);
+      ctx.fillStyle='rgba(243,156,18,.08)'; ctx.fill();
+      ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(243,156,18,.5)'; ctx.lineWidth=2; ctx.stroke(); ctx.setLineDash([]);
+    }
+    if(G.tool==='move' && G.moveFrom){
+      const [fr,fc]=G.moveFrom;
+      // Draw ghost preview of object at hover position
+      if(c!==fc||r!==fr){
+        const srcType=G.grid[fr][fc].type;
+        ctx.globalAlpha=0.45;
+        if(srcType==='house') dHouse(c*TILE,r*TILE,null,false);
+        else if(srcType==='tps') dTPS(c*TILE,r*TILE,false);
+        else if(srcType==='park') dPark(c*TILE,r*TILE);
+        ctx.globalAlpha=1;
+        // Arrow from source to hover
+        ctx.beginPath();
+        ctx.moveTo(fc*TILE+TILE/2,fr*TILE+TILE/2);
+        ctx.lineTo(c*TILE+TILE/2,r*TILE+TILE/2);
+        ctx.strokeStyle='rgba(0,200,255,0.6)'; ctx.lineWidth=2;
+        ctx.setLineDash([5,4]); ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+      const [r1,c1]=G.measureStart;
+      const dr=Math.abs(r-r1), dc=Math.abs(c-c1);
+      const dist=Math.sqrt(dr*dr+dc*dc).toFixed(1);
+      ctx.beginPath();
+      ctx.moveTo(c1*TILE+TILE/2,r1*TILE+TILE/2);
+      ctx.lineTo(c*TILE+TILE/2,r*TILE+TILE/2);
+      ctx.strokeStyle='rgba(0,200,255,0.7)'; ctx.lineWidth=2; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='rgba(22,27,34,.85)'; ctx.fillRect(c*TILE,r*TILE-16,80,14);
+      ctx.fillStyle='#00cfff'; ctx.font='5px monospace'; ctx.fillText(`${dist}ptk=${(dist*10).toFixed(0)}m`,c*TILE+2,r*TILE-5);
+    }
+  }
+});
+
+// ── BUFFER TOGGLE ──
+function togBuf(){
+  sfxClick();
+  G.showBuf=!G.showBuf;
+  const b=$('bufbtn');
+  b.textContent=G.showBuf?'📡 BUFFER ON':'📡 BUFFER OFF';
+  b.className='hudbtn'+(G.showBuf?' on':'');
+  drawAll();
+}
+
+// ── UI UPDATE ──
+function $(id){return document.getElementById(id);}
+function updateUI(){
+  const{srv,uns}=analyze();
+  const tot=srv+uns,wr=tot?uns/tot:0;
+  G.happy=Math.max(0,Math.round(100-wr*80-(G.penduduk>0&&!tot?30:0)));
+  let hc=0,tc=0,rc=0;
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(G.grid[r][c].type==='house')hc++;
+    if(G.grid[r][c].type==='tps')tc++;
+    if(G.grid[r][c].type==='river')rc++;
+  }
+  $('sm').textContent=G.money;
+  $('sp').textContent=G.penduduk;
+  $('sh').textContent=G.happy+'%';
+  $('sd').textContent='Hari '+G.day;
+  $('sw').textContent=Math.round(wr*100)+'%';
+  $('swbox').className='stt'+(wr>.3?' warn':'');
+  $('ih').textContent=hc; $('it').textContent=tc; $('iriv').textContent=rc;
+  $('ic').textContent=srv+'/'+tot;
+  $('in').textContent=G.penduduk;
+  $('isrv').textContent=srv; $('iuns').textContent=uns;
+  $('ihap').textContent=G.happy+'%';
+  $('ihap').className='v '+(G.happy>70?'ok':G.happy>40?'mid':'bad');
+  const bw=$('bwaste'); bw.style.width=wr*100+'%'; bw.style.background=wr>.5?'var(--red)':wr>.2?'var(--yellow)':'var(--green)';
+  const bh=$('bhappy'); bh.style.width=G.happy+'%'; bh.style.background=G.happy>70?'var(--green)':G.happy>40?'var(--yellow)':'var(--red)';
+}
+
+// ── LOG ──
+function addLog(msg,type='info'){
+  const log=$('log');
+  const el=document.createElement('div');
+  el.className='le '+type;
+  el.textContent=`[H${G.day}] ${msg}`;
+  log.appendChild(el);
+  log.scrollTop=log.scrollHeight;
+  while(log.children.length>50) log.removeChild(log.firstChild);
+}
+
+// ── NOTIF ──
+function showNotif(title,body){ $('ntitle').textContent=title; $('nbody').textContent=body; $('notif').classList.add('show'); }
+function closeNotif(){ $('notif').classList.remove('show'); sfxClick(); }
+
+// ── GAME LOOP ──
+let last=0;
+function loop(ts){
+  const dt=ts-last; last=ts;
+  if(dt<300){
+    npcT+=dt;
+    if(npcT>2500){npcT=0;spawnNPC();}
+    updateNPCs();
+    drawAll();
+    drawRain();
+  }
+  requestAnimationFrame(loop);
+}
+
+// ── INIT ──
+resize();
+
+// Pre-place a river for visual interest
+for(let c=8;c<=10;c++) for(let r=0;r<ROWS;r++) G.grid[r][c].type='river';
+// Slight zigzag
+for(let r=6;r<12;r++) { G.grid[r][11].type='river'; }
+
+addLog('Selamat datang di GeoKota v2! 🏙️','good');
+addLog('Konflik muncul otomatis sesuai kondisi kota.','info');
+addLog('Sungai ada di barat peta. Hati-hati zona sempadan!','warn');
+updateUI();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
