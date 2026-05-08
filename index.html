@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>GeoKota v4 — Pixel City</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap');
+:root{
+  --bg:#0d1117;--panel:#161b22;--border:#30363d;
+  --green:#2ecc71;--red:#e74c3c;--yellow:#f39c12;--blue:#3498db;
+  --purple:#9b59b6;--cyan:#00d4ff;--orange:#e67e22;--teal:#1abc9c;
+  --text:#e8eaed;--dim:#8b949e;
+}
+*{margin:0;padding:0;box-sizing:border-box;image-rendering:pixelated;}
+body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospace;font-size:8px;overflow:hidden;user-select:none;}
+
+#app{display:grid;grid-template-columns:var(--lw,180px) 1fr var(--rw,180px);grid-template-rows:42px 1fr 60px;height:100vh;transition:grid-template-columns .22s ease;}
+
+/* HEADER */
+#hdr{grid-column:1/-1;background:var(--panel);border-bottom:2px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 7px;gap:4px;}
+#hdr h1{font-size:7px;color:var(--green);letter-spacing:1px;white-space:nowrap;}
+.sbar{display:flex;gap:5px;align-items:center;flex-wrap:nowrap;}
+.stt{display:flex;align-items:center;gap:2px;font-size:6px;white-space:nowrap;}
+.stt.warn .val{color:var(--red);animation:blink .7s step-end infinite;}
+@keyframes blink{50%{opacity:0;}}
+#wbadge{font-size:11px;}
+.hbtn{background:#21262d;border:2px solid var(--border);color:var(--dim);font-family:'Press Start 2P',monospace;font-size:4px;padding:3px 5px;cursor:pointer;white-space:nowrap;}
+.hbtn:hover{border-color:var(--green);color:var(--text);}
+
+/* PANELS */
+#lpanel,#rpanel{background:var(--panel);display:flex;flex-direction:column;gap:3px;overflow:hidden;transition:padding .22s;}
+#lpanel{border-right:2px solid var(--border);padding:6px 4px;overflow-y:auto;}
+#rpanel{border-left:2px solid var(--border);padding:6px 4px;overflow-y:auto;}
+.lhide #lpanel{padding:0;}
+.rhide #rpanel{padding:0;}
+
+/* PANEL TOGGLE TABS */
+.ptab{position:fixed;top:50%;transform:translateY(-50%);background:var(--panel);border:2px solid var(--border);
+  color:var(--dim);font-family:'Press Start 2P',monospace;font-size:5px;padding:6px 3px;cursor:pointer;z-index:40;
+  writing-mode:vertical-rl;line-height:1;letter-spacing:1px;transition:left .22s,right .22s,border-color .15s,color .15s;}
+.ptab:hover{border-color:var(--green);color:var(--green);}
+#ltab{left:180px;border-left:none;border-radius:0 4px 4px 0;}
+#rtab{right:180px;border-right:none;border-radius:4px 0 0 4px;}
+
+/* TOOL BUTTONS */
+.ptitle{color:var(--dim);font-size:4px;letter-spacing:1px;margin-bottom:1px;white-space:nowrap;}
+.tbtn{background:#21262d;border:2px solid var(--border);color:var(--text);font-family:'Press Start 2P',monospace;
+  font-size:4px;padding:4px 3px;cursor:pointer;display:flex;align-items:center;gap:3px;width:100%;
+  position:relative;transition:border-color .1s;white-space:nowrap;}
+.tbtn:hover{border-color:var(--green);}
+.tbtn.active{border-color:var(--green);background:#1a2e1a;}
+.tbtn.active::after{content:'◀';position:absolute;right:3px;color:var(--green);font-size:4px;}
+.tbtn.red .tn{color:var(--red);}
+.tbtn.orange .tn{color:var(--orange);}
+.ti{font-size:11px;min-width:14px;text-align:center;}
+.tn{font-size:4px;}.tc{font-size:3px;color:var(--yellow);}
+hr.sep{border:none;border-top:1px solid var(--border);margin:2px 0;}
+
+/* STAT BOXES */
+.ibox{background:#21262d;border:1px solid var(--border);padding:4px;flex-shrink:0;}
+.ibox h3{font-size:4px;color:var(--dim);margin-bottom:3px;}
+.ir{display:flex;justify-content:space-between;margin-bottom:2px;font-size:4px;}
+.ir .l{color:var(--dim);}.ir .v{color:var(--text);}
+.ok{color:var(--green)!important;}.bad{color:var(--red)!important;}.mid{color:var(--yellow)!important;}
+.mbar{width:100%;height:4px;background:#30363d;border:1px solid var(--border);margin-top:1px;}
+.mbf{height:100%;transition:width .4s;}
+
+/* CANVAS */
+#cw{position:relative;overflow:hidden;background:#2d5a1b;}
+#gc{display:block;cursor:crosshair;}
+#rainc,#floodc,#heatc{position:absolute;inset:0;pointer-events:none;z-index:3;}
+#floodc{z-index:4;}#heatc{z-index:2;}
+
+/* HUD BUTTONS */
+.hudbtn{position:absolute;background:rgba(22,27,34,.88);border:2px solid;font-family:'Press Start 2P',monospace;font-size:4px;padding:3px 5px;cursor:pointer;z-index:5;white-space:nowrap;}
+#bufbtn{top:7px;right:7px;border-color:var(--blue);color:var(--blue);}
+#bufbtn.on{background:rgba(52,152,219,.15);}
+#heatbtn{top:7px;right:110px;border-color:var(--orange);color:var(--orange);}
+#sfxbtn{top:34px;right:7px;border-color:var(--purple);color:var(--purple);}
+#daybtn{bottom:7px;left:7px;border-color:var(--green);color:var(--green);font-size:5px;padding:5px 8px;}
+#toolhint{position:absolute;top:7px;left:7px;background:rgba(22,27,34,.9);border:1px solid var(--cyan);
+  padding:4px 7px;font-size:4px;color:var(--cyan);display:none;pointer-events:none;z-index:6;}
+
+/* NOTIF */
+#notif{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+  background:var(--panel);border:3px solid var(--yellow);padding:12px 16px;text-align:center;
+  z-index:50;transition:transform .15s;max-width:260px;pointer-events:none;}
+#notif.show{transform:translate(-50%,-50%) scale(1);pointer-events:all;}
+#notif h2{font-size:7px;color:var(--yellow);margin-bottom:6px;}
+#notif p{font-size:4px;color:var(--text);line-height:2;margin-bottom:9px;white-space:pre-line;}
+#notif button{background:var(--yellow);color:#000;border:none;font-family:'Press Start 2P',monospace;font-size:4px;padding:5px 10px;cursor:pointer;}
+
+/* BOTTOM */
+#bot{grid-column:1/-1;background:var(--panel);border-top:2px solid var(--border);display:flex;align-items:center;padding:3px 7px;gap:6px;}
+.tiptxt{font-family:'VT323',monospace;font-size:11px;color:var(--dim);white-space:nowrap;}
+#log{font-family:'VT323',monospace;font-size:12px;display:flex;flex-direction:column;gap:1px;max-height:54px;overflow-y:auto;flex:1;}
+.le{padding:1px 3px;}
+.le.info{color:#58a6ff;}.le.warn{color:var(--yellow);}.le.danger{color:var(--red);}.le.good{color:var(--green);}
+#ndaybtn{white-space:nowrap;background:var(--green);color:#000;border:none;font-family:'Press Start 2P',monospace;font-size:5px;padding:6px 8px;cursor:pointer;}
+
+/* CONFLICT MODAL */
+#cfov{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;display:none;align-items:center;justify-content:center;}
+#cfov.show{display:flex;}
+#cfbox{background:var(--panel);border:3px solid var(--red);max-width:400px;width:94%;animation:popIn .18s ease;}
+@keyframes popIn{from{transform:scale(.82);opacity:0}to{transform:scale(1);opacity:1}}
+.cf-hdr{padding:9px 13px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:7px;}
+.cf-ico{font-size:20px;}.cf-ttl{font-size:7px;}
+.cf-body{padding:11px 13px;}
+.cf-loc{font-family:'VT323',monospace;font-size:11px;color:var(--dim);margin-bottom:6px;}
+.cf-desc{font-size:4px;line-height:2.1;color:var(--text);margin-bottom:9px;white-space:pre-line;}
+.cfopts{display:flex;flex-direction:column;gap:5px;}
+.cfopt{background:#21262d;border:2px solid var(--border);color:var(--text);font-family:'Press Start 2P',monospace;
+  font-size:4px;padding:7px 9px;cursor:pointer;text-align:left;line-height:1.8;transition:border-color .1s;}
+.cfopt:hover{border-color:var(--yellow);}
+.cfopt .ol{color:var(--yellow);}.cfopt .od{color:var(--dim);font-size:3px;margin-top:2px;}
+
+/* RESULT MODAL */
+#rsov{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;display:none;align-items:center;justify-content:center;}
+#rsov.show{display:flex;}
+#rsbox{background:var(--panel);max-width:360px;width:93%;animation:popIn .18s ease;}
+#rsbox.okb{border:3px solid var(--green);}#rsbox.ngb{border:3px solid var(--red);}
+.rs-hdr{padding:9px 13px;border-bottom:2px solid var(--border);}
+.rs-hdr.okh{background:#0a2a0a;}.rs-hdr.ngh{background:#2a0a0a;}
+.rs-ico{font-size:18px;}.rs-ttl{font-size:7px;margin-top:3px;}
+.rs-body{padding:9px 13px;font-size:4px;line-height:2;color:var(--text);white-space:pre-line;}
+.rs-fu{padding:0 13px 9px;display:none;}
+.rs-fu .fttl{font-size:4px;color:var(--dim);margin-bottom:4px;}
+#rs-close{display:block;margin:0 13px 11px;background:var(--green);color:#000;border:none;
+  font-family:'Press Start 2P',monospace;font-size:4px;padding:6px;cursor:pointer;width:calc(100% - 26px);}
+
+/* SEARCH GAME OVERLAY */
+#searchov{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:400;display:none;align-items:center;justify-content:center;}
+#searchov.show{display:flex;}
+#searchbox{background:var(--panel);border:3px solid var(--yellow);max-width:440px;width:95%;}
+#search-canvas{display:block;background:#1a2e1a;cursor:crosshair;image-rendering:pixelated;}
+.sg-hdr{background:#1a1a0a;padding:8px 13px;border-bottom:2px solid var(--yellow);display:flex;justify-content:space-between;align-items:center;}
+.sg-hdr h2{font-size:7px;color:var(--yellow);}
+.sg-desc{font-family:'VT323',monospace;font-size:13px;color:var(--text);padding:7px 13px;line-height:1.5;}
+#sg-close{background:var(--red);color:#fff;border:none;font-family:'Press Start 2P',monospace;font-size:4px;padding:4px 7px;cursor:pointer;}
+
+/* MINI GAME: RUNNER */
+#runnov{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:none;align-items:center;justify-content:center;}
+#runnov.show{display:flex;}
+#runbox{background:#1a0a2a;border:3px solid var(--purple);max-width:460px;width:95%;}
+#run-canvas{display:block;background:#0d0020;image-rendering:pixelated;}
+.run-hdr{background:#200035;padding:7px 12px;border-bottom:2px solid var(--purple);display:flex;justify-content:space-between;align-items:center;}
+.run-hdr h2{font-size:7px;color:var(--purple);}
+#run-close{background:var(--red);color:#fff;border:none;font-family:'Press Start 2P',monospace;font-size:4px;padding:4px 7px;cursor:pointer;}
+
+/* MINE GAME */
+#mineov{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;display:none;align-items:center;justify-content:center;}
+#mineov.show{display:flex;}
+#minebox{background:#1a1000;border:3px solid var(--orange);max-width:440px;width:95%;}
+#mine-canvas{display:block;background:#0a0800;image-rendering:pixelated;}
+.mine-hdr{background:#200800;padding:7px 12px;border-bottom:2px solid var(--orange);display:flex;justify-content:space-between;align-items:center;}
+.mine-hdr h2{font-size:7px;color:var(--orange);}
+#mine-close{background:var(--red);color:#fff;border:none;font-family:'Press Start 2P',monospace;font-size:4px;padding:4px 7px;cursor:pointer;}
+
+/* TUTORIAL */
+#tut{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:600;display:flex;align-items:center;justify-content:center;}
+#tbox{background:var(--panel);border:3px solid var(--green);max-width:520px;width:93%;}
+#thdr{background:#1a2e1a;padding:11px 15px;border-bottom:2px solid var(--green);display:flex;align-items:center;gap:7px;}
+#thdr h2{font-size:8px;color:var(--green);}
+#tbody{padding:12px 15px;}
+.tslide{display:none;flex-direction:column;gap:7px;}
+.tslide.active{display:flex;}
+.tslide h3{font-size:6px;color:var(--yellow);}
+.tslide p{font-size:5px;line-height:2;color:var(--text);}
+.demo{background:#21262d;border:1px solid var(--border);padding:7px;font-family:'VT323',monospace;font-size:13px;color:var(--green);line-height:1.6;}
+.tnav{display:flex;align-items:center;justify-content:space-between;padding:9px 15px;border-top:1px solid var(--border);}
+.pbtn{background:var(--green);color:#000;border:none;font-family:'Press Start 2P',monospace;font-size:5px;padding:6px 10px;cursor:pointer;}
+.sbtn{background:#21262d;color:var(--text);border:2px solid var(--border);font-family:'Press Start 2P',monospace;font-size:5px;padding:6px 10px;cursor:pointer;}
+.dots{display:flex;gap:4px;}
+.dot{width:5px;height:5px;background:var(--border);}
+.dot.on{background:var(--green);}
+#tskip{font-size:4px;color:var(--dim);background:none;border:none;font-family:'Press Start 2P',monospace;cursor:pointer;}
+
+/* Theft/search animation */
+.thief-flash{position:absolute;inset:0;background:rgba(231,76,60,.15);pointer-events:none;z-index:8;animation:flash .3s ease 3;}
+@keyframes flash{0%,100%{opacity:0}50%{opacity:1}}
+
+::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:var(--panel);}::-webkit-scrollbar-thumb{background:var(--border);}
+</style>
+</head>
+<body>
+
+<!-- TUTORIAL -->
+<div id="tut">
+ <div id="tbox">
+  <div id="thdr"><span style="font-size:18px">🏙️</span><h2>GEOKOTA v4</h2></div>
+  <div id="tbody">
+   <div class="tslide active" id="sl0">
+    <h3>🌍 GEOKOTA v4 — SEMUA FITUR</h3>
+    <p>Game kota pixel berbasis <b style="color:var(--blue)">GIS</b>!<br>Bangun kota, kelola konflik, main mini-game!</p>
+    <div class="demo">🏠 Rumah (2 petak)  🏥 RS  🏫 Sekolah<br>🌾 Kebun  🐄 Peternakan  ⛏️ Tambang<br>🌊 Sungai  🌳 Taman  🛣️ Jalan<br>📡 Buffer  📏 Ukur  🔀 Pindah</div>
+   </div>
+   <div class="tslide" id="sl1">
+    <h3>🔨 MEMBANGUN</h3>
+    <p>Pilih alat di panel kiri → klik tile peta</p>
+    <div class="demo">🛣️ JALAN       -10💰<br>🏠 RUMAH (2x1) -80💰 → +pajak/hari<br>🏥 RS          -150💰 → buffer kesehatan<br>🏫 SEKOLAH     -120💰 → buffer pendidikan<br>🌾 KEBUN       -40💰  → panen setiap 3 hari<br>🐄 PETERNAKAN  -60💰  → +income tiap hari<br>⛏️ TAMBANG     -100💰 → mini-game nambang</div>
+   </div>
+   <div class="tslide" id="sl2">
+    <h3>🌊 SUNGAI & ZONA SEMPADAN</h3>
+    <div class="demo">🌊 Sungai = batas alam kota<br>⚠️ Zona sempadan = 2 petak dari sungai<br><br>Larangan di zona sempadan:<br>• TPS (pencemaran lindi)<br>• Kepadatan rumah tinggi (malaria)<br><br>1 petak = 10 meter (GIS standard)</div>
+   </div>
+   <div class="tslide" id="sl3">
+    <h3>⚡ KONFLIK OTOMATIS</h3>
+    <div class="demo">5+ rumah tanpa TPS   → Krisis Sampah<br>3 rumah dalam 1 ptk  → Sengketa Lahan<br>TPS ≤2 ptk sungai   → Pencemaran<br>Hujan 3 hari berurut → Banjir<br>Rumah dekat sungai  → Malaria<br>Pop tinggi           → Pencurian!<br><br>Jawab BENAR → kota berkembang<br>Jawab SALAH → warga pergi!</div>
+   </div>
+   <div class="tslide" id="sl4">
+    <h3>🎮 MINI-GAME</h3>
+    <div class="demo">🔍 CARI PENCURI/BARANG HILANG<br>   Pop-up misi → klik tile tersembunyi<br><br>🏃 RUNNER — klik ⛏️ Tambang<br>   Loncat lewatin rintangan, kumpul koin!<br>   Tekan SPASI / tap = loncat<br><br>⛏️ NAMBANG — klik lokasi tambang<br>   Klik blok untuk gali ke bawah<br>   Kumpul mineral = duit!</div>
+   </div>
+   <div class="tslide" id="sl5">
+    <h3>🗺️ HEATMAP & FITUR GIS</h3>
+    <div class="demo">📡 Buffer Analysis:<br>   TPS, RS, Sekolah → radius layanan<br><br>🔥 Heatmap Kepadatan:<br>   Merah = padat, Biru = jarang<br><br>📏 Ukur Jarak:<br>   Klik 2 tile → tampil petak & meter<br><br>🔀 Pindah Objek:<br>   Klik sumber → klik tujuan</div>
+   </div>
+   <div class="tslide" id="sl6">
+    <h3>🌤️ CUACA & WAKTU</h3>
+    <div class="demo">☀️ Panas   → pajak +10%<br>⛅ Mendung → normal<br>🌧️ Hujan   → pajak -20%, animasi hujan<br>           + suara hujan<br><br>⏰ Hari ganti OTOMATIS tiap 30 detik<br>💰 Pajak + panen masuk setiap hari<br>◀▶ Tombol tab = tutup/buka panel</div>
+    <p style="color:var(--green)">Selamat membangun kota! 🏙️</p>
+   </div>
+  </div>
+  <div class="tnav">
+   <button class="sbtn" id="tprev" onclick="tutNav(-1)" style="visibility:hidden">◀</button>
+   <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+    <div class="dots" id="tdots"></div>
+    <button id="tskip" onclick="closeTut()">LEWATI</button>
+   </div>
+   <button class="pbtn" id="tnext" onclick="tutNav(1)">NEXT ▶</button>
+  </div>
+ </div>
+</div>
+
+<!-- CONFLICT MODAL -->
+<div id="cfov">
+ <div id="cfbox">
+  <div class="cf-hdr" id="cf-hdr"><span class="cf-ico" id="cf-ico">⚠️</span><span class="cf-ttl" id="cf-ttl">KONFLIK!</span></div>
+  <div class="cf-body">
+   <div class="cf-loc" id="cf-loc"></div>
+   <div class="cf-desc" id="cf-desc"></div>
+   <div class="cfopts" id="cf-opts"></div>
+  </div>
+ </div>
+</div>
+
+<!-- RESULT MODAL -->
+<div id="rsov">
+ <div id="rsbox">
+  <div class="rs-hdr" id="rs-hdr"><div class="rs-ico" id="rs-ico"></div><div class="rs-ttl" id="rs-ttl"></div></div>
+  <div class="rs-body" id="rs-body"></div>
+  <div class="rs-fu" id="rs-fu"><div class="fttl" id="rs-fttl"></div><div id="rs-fopts"></div></div>
+  <button id="rs-close" onclick="closeResult()">✓ LANJUTKAN</button>
+ </div>
+</div>
+
+<!-- SEARCH GAME -->
+<div id="searchov">
+ <div id="searchbox">
+  <div class="sg-hdr">
+   <h2 id="sg-title">🔍 CARI PENCURI!</h2>
+   <button id="sg-close" onclick="closeSearch()">✕ TUTUP</button>
+  </div>
+  <div class="sg-desc" id="sg-desc">Klik tile yang mencurigakan untuk menemukan pelaku!</div>
+  <canvas id="search-canvas" width="414" height="280"></canvas>
+ </div>
+</div>
+
+<!-- RUNNER MINI-GAME -->
+<div id="runnov">
+ <div id="runbox">
+  <div class="run-hdr">
+   <h2>🏃 RUNNER — KUMPUL KOIN!</h2>
+   <button id="run-close" onclick="closeRunner()">✕ TUTUP</button>
+  </div>
+  <div style="font-family:'VT323',monospace;font-size:12px;color:var(--dim);padding:5px 12px;">SPASI / TAP = Loncat | Kumpul 🪙 | Hindari 🌵</div>
+  <canvas id="run-canvas" width="460" height="180"></canvas>
+  <div style="font-family:'Press Start 2P',monospace;font-size:5px;color:var(--dim);padding:5px 12px 8px;" id="run-score">Skor: 0 | Koin: 0</div>
+ </div>
+</div>
+
+<!-- MINE MINI-GAME -->
+<div id="mineov">
+ <div id="minebox">
+  <div class="mine-hdr">
+   <h2>⛏️ TAMBANG — GALI MINERAL!</h2>
+   <button id="mine-close" onclick="closeMine()">✕ TUTUP</button>
+  </div>
+  <div style="font-family:'VT323',monospace;font-size:12px;color:var(--dim);padding:5px 12px;">Klik blok untuk gali | 🟡 Emas=50💰 | 🔵 Batu Bara=20💰 | 💎 Permata=100💰</div>
+  <canvas id="mine-canvas" width="420" height="320"></canvas>
+  <div style="font-family:'Press Start 2P',monospace;font-size:5px;color:var(--dim);padding:5px 12px 8px;" id="mine-score">Mineral: 0 | Nilai: 0💰 | Stamina: 20</div>
+ </div>
+</div>
+
+<!-- PANEL TABS -->
+<button id="ltab" class="ptab" onclick="togglePanel('l')">◀ ALAT</button>
+<button id="rtab" class="ptab" onclick="togglePanel('r')">STATUS ▶</button>
+
+<!-- APP -->
+<div id="app">
+ <div id="hdr">
+  <h1>🏙️ GEOKOTA v4</h1>
+  <div class="sbar">
+   <div class="stt">💰<span class="val" id="sm">800</span></div>
+   <div class="stt">👥<span class="val" id="sp">0</span></div>
+   <div class="stt">😊<span class="val" id="sh">100%</span></div>
+   <div class="stt" id="swbox">🗑️<span class="val" id="sw">0%</span></div>
+   <div class="stt">📅<span class="val" id="sd">Hari 1</span></div>
+   <span id="wbadge">☀️</span>
+  </div>
+  <button class="hbtn" onclick="openTut()">❓ PANDUAN</button>
+ </div>
+
+ <div id="lpanel">
+  <div class="ptitle">▣ INFRASTRUKTUR</div>
+  <button class="tbtn active" data-tool="road"    onclick="selT(this,'road')">   <span class="ti">🛣️</span><div><div class="tn">JALAN</div>      <div class="tc">-10💰</div></div></button>
+  <button class="tbtn"        data-tool="house"   onclick="selT(this,'house')">  <span class="ti">🏠</span><div><div class="tn">RUMAH 2x1</div>  <div class="tc">-80💰</div></div></button>
+  <button class="tbtn"        data-tool="tps"     onclick="selT(this,'tps')">    <span class="ti">🗑️</span><div><div class="tn">TPS</div>         <div class="tc">-80💰</div></div></button>
+  <button class="tbtn"        data-tool="hospital"onclick="selT(this,'hospital')"><span class="ti">🏥</span><div><div class="tn">RS</div>          <div class="tc">-150💰</div></div></button>
+  <button class="tbtn"        data-tool="school"  onclick="selT(this,'school')"> <span class="ti">🏫</span><div><div class="tn">SEKOLAH</div>     <div class="tc">-120💰</div></div></button>
+  <button class="tbtn"        data-tool="park"    onclick="selT(this,'park')">   <span class="ti">🌳</span><div><div class="tn">TAMAN</div>        <div class="tc">-30💰</div></div></button>
+  <button class="tbtn"        data-tool="river"   onclick="selT(this,'river')">  <span class="ti">🌊</span><div><div class="tn">SUNGAI</div>       <div class="tc">-5💰</div></div></button>
+  <hr class="sep">
+  <div class="ptitle">▣ EKONOMI</div>
+  <button class="tbtn orange" data-tool="farm"    onclick="selT(this,'farm')">   <span class="ti">🌾</span><div><div class="tn">KEBUN</div>        <div class="tc">-40💰</div></div></button>
+  <button class="tbtn orange" data-tool="ranch"   onclick="selT(this,'ranch')">  <span class="ti">🐄</span><div><div class="tn">PETERNAKAN</div>   <div class="tc">-60💰</div></div></button>
+  <button class="tbtn orange" data-tool="mine"    onclick="selT(this,'mine')">   <span class="ti">⛏️</span><div><div class="tn">TAMBANG</div>      <div class="tc">-100💰</div></div></button>
+  <hr class="sep">
+  <div class="ptitle">▣ AKSI</div>
+  <button class="tbtn red"    data-tool="bulldoze"onclick="selT(this,'bulldoze')"><span class="ti">💣</span><div><div class="tn">HANCURKAN</div>   <div class="tc">+5💰</div></div></button>
+  <button class="tbtn"        data-tool="inspect" onclick="selT(this,'inspect')"> <span class="ti">🔍</span><div><div class="tn">INSPEKSI</div>     <div class="tc">gratis</div></div></button>
+  <button class="tbtn"        data-tool="measure" onclick="selT(this,'measure')"> <span class="ti">📏</span><div><div class="tn">UKUR</div>          <div class="tc">gratis</div></div></button>
+  <button class="tbtn"        data-tool="move"    onclick="selT(this,'move')">    <span class="ti">🔀</span><div><div class="tn">PINDAH</div>        <div class="tc">gratis</div></div></button>
+ </div>
+
+ <div id="cw">
+  <canvas id="gc"></canvas>
+  <canvas id="rainc"></canvas>
+  <canvas id="floodc"></canvas>
+  <canvas id="heatc"></canvas>
+  <button id="bufbtn"  class="hudbtn on" onclick="togBuf()">📡 BUF ON</button>
+  <button id="heatbtn" class="hudbtn"    onclick="togHeat()">🔥 HEAT</button>
+  <button id="sfxbtn"  class="hudbtn"    onclick="togSfx()">🔊 SFX</button>
+  <button id="daybtn"  class="hudbtn"    onclick="nextDay()">⏭ AUTO 30s</button>
+  <div id="toolhint"></div>
+  <div id="notif"><h2 id="ntitle"></h2><p id="nbody"></p><button onclick="closeNotif()">OK</button></div>
+ </div>
+
+ <div id="rpanel">
+  <div class="ptitle">▣ STATUS</div>
+  <div class="ibox">
+   <h3>📊 KOTA</h3>
+   <div class="ir"><span class="l">Rumah</span>    <span class="v" id="ih">0</span></div>
+   <div class="ir"><span class="l">RS</span>        <span class="v" id="ihs">0</span></div>
+   <div class="ir"><span class="l">Sekolah</span>  <span class="v" id="isc">0</span></div>
+   <div class="ir"><span class="l">Warga</span>    <span class="v" id="in">0</span></div>
+   <div class="ir"><span class="l">Coverage</span> <span class="v ok" id="ic">0/0</span></div>
+  </div>
+  <div class="ibox">
+   <h3>💰 EKONOMI</h3>
+   <div class="ir"><span class="l">Kebun</span>    <span class="v ok" id="ifarm">0</span></div>
+   <div class="ir"><span class="l">Ternak</span>   <span class="v ok" id="iranch">0</span></div>
+   <div class="ir"><span class="l">Tambang</span>  <span class="v mid" id="imine">0</span></div>
+  </div>
+  <div class="ibox">
+   <h3>🗑️ SAMPAH</h3>
+   <div class="ir"><span class="l">✅</span><span class="v ok"  id="isrv">0</span></div>
+   <div class="ir"><span class="l">❌</span><span class="v bad" id="iuns">0</span></div>
+   <div class="mbar"><div class="mbf" id="bwaste" style="width:0%;background:var(--green)"></div></div>
+  </div>
+  <div class="ibox">
+   <h3>😊 KEBAHAGIAAN</h3>
+   <div class="ir"><span class="l">Skor</span><span class="v ok" id="ihap">100%</span></div>
+   <div class="mbar"><div class="mbf" id="bhap" style="width:100%;background:var(--green)"></div></div>
+  </div>
+  <div class="ibox">
+   <h3>🌤️ CUACA</h3>
+   <div class="ir"><span class="l">Hari ini</span><span class="v" id="iwth">☀️</span></div>
+   <div class="ir"><span class="l">Hujan</span>   <span class="v mid" id="irain">0h</span></div>
+   <div class="ir"><span class="l">Efek</span>    <span class="v" id="iwef">Normal</span></div>
+  </div>
+  <div class="ibox">
+   <h3>📡 GIS</h3>
+   <div style="font-size:3px;color:var(--dim);line-height:2.2">
+    TPS buf: <b style="color:var(--yellow)">3 ptk</b><br>
+    RS buf:  <b style="color:var(--red)">4 ptk</b><br>
+    Sekolah: <b style="color:var(--blue)">4 ptk</b><br>
+    Sungai sempadan: <b style="color:var(--cyan)">2 ptk</b><br>
+    1 petak = <b style="color:var(--green)">10m</b>
+   </div>
+  </div>
+ </div>
+
+ <div id="bot">
+  <div class="tiptxt">◀▶ panel | 🔀 pindah | 📏 ukur | ⛏️ tambang=game</div>
+  <div id="log"></div>
+  <button id="ndaybtn" onclick="nextDay()">⏭ NEXT DAY</button>
+ </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// AUDIO ENGINE
+// ════════════════════════════════════════
+const AC=new(window.AudioContext||window.webkitAudioContext)();
+let sfxOn=true;
+document.addEventListener('pointerdown',()=>{if(AC.state==='suspended')AC.resume();},{once:true});
+
+function tone(f,d,t='square',v=0.12){
+  if(!sfxOn||AC.state==='suspended')return;
+  try{const o=AC.createOscillator(),g=AC.createGain();
+    o.connect(g);g.connect(AC.destination);o.type=t;o.frequency.value=f;
+    g.gain.setValueAtTime(v,AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+d);
+    o.start();o.stop(AC.currentTime+d);}catch(e){}
+}
+
+// rain sound node
+let rainNode=null,rainGain=null;
+function startRainSound(){
+  if(rainNode||!sfxOn)return;
+  try{
+    const bufSize=4096,buf=AC.createScriptProcessor(bufSize,1,1);
+    buf.onaudioprocess=e=>{const d=e.outputBuffer.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*0.06;};
+    rainGain=AC.createGain();rainGain.gain.value=0.18;
+    buf.connect(rainGain);rainGain.connect(AC.destination);
+    rainNode=buf;
+  }catch(e){}
+}
+function stopRainSound(){if(rainNode){try{rainNode.disconnect();rainGain.disconnect();}catch(e){}rainNode=null;rainGain=null;}}
+
+function sfxClick()   {tone(440,.06);tone(660,.05);}
+function sfxBuild()   {[330,500,660].forEach((f,i)=>setTimeout(()=>tone(f,.08),i*55));}
+function sfxError()   {tone(160,.18,'sawtooth',.2);setTimeout(()=>tone(130,.14,'sawtooth',.16),110);}
+function sfxNextDay() {[330,392,440,523].forEach((f,i)=>setTimeout(()=>tone(f,.08),i*65));}
+function sfxWarn()    {[220,165,220,165].forEach((f,i)=>setTimeout(()=>tone(f,.12,'sawtooth',.22),i*120));}
+function sfxConflict(){[330,220,330,180].forEach((f,i)=>setTimeout(()=>tone(f,.15,'sawtooth',.26),i*100));}
+function sfxSuccess() {[440,523,659,784].forEach((f,i)=>setTimeout(()=>tone(f,.1),i*80));}
+function sfxFail()    {[330,262,220,175].forEach((f,i)=>setTimeout(()=>tone(f,.13,'sawtooth',.2),i*90));}
+function sfxCoin()    {tone(659,.07);setTimeout(()=>tone(784,.07),80);}
+function sfxThief()   {[200,180,160,140].forEach((f,i)=>setTimeout(()=>tone(f,.1,'sawtooth',.18),i*80));}
+function sfxPickup()  {tone(880,.04);setTimeout(()=>tone(1046,.04),50);}
+function sfxHarvest() {[330,392,440].forEach((f,i)=>setTimeout(()=>tone(f,.08),i*60));}
+function togSfx(){sfxOn=!sfxOn;$('sfxbtn').textContent=sfxOn?'🔊 SFX':'🔇 SFX';if(sfxOn)sfxClick();}
+
+// ════════════════════════════════════════
+// TUTORIAL
+// ════════════════════════════════════════
+const NSLIDES=7;let tutPage=0;
+function buildDots(){const c=$('tdots');c.innerHTML='';for(let i=0;i<NSLIDES;i++){const d=document.createElement('div');d.className='dot'+(i===tutPage?' on':'');c.appendChild(d);}}
+function tutNav(dir){sfxClick();$('sl'+tutPage).classList.remove('active');tutPage=Math.max(0,Math.min(NSLIDES-1,tutPage+dir));$('sl'+tutPage).classList.add('active');buildDots();$('tprev').style.visibility=tutPage===0?'hidden':'visible';const nb=$('tnext');if(tutPage===NSLIDES-1){nb.textContent='▶ MAIN!';nb.onclick=()=>closeTut();}else{nb.textContent='NEXT ▶';nb.onclick=()=>tutNav(1);}}
+function openTut(){sfxClick();tutPage=-1;tutNav(1);$('tut').style.display='flex';}
+function closeTut(){$('tut').style.display='none';startAutoDay();}
+buildDots();
+
+// ════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════
+const TILE=32,COLS=24,ROWS=18;
+const BUF_TPS=3,BUF_HOSP=4,BUF_SCH=4;
+const COSTS={road:10,house:80,tps:80,hospital:150,school:120,park:30,river:5,farm:40,ranch:60,mine:100};
+const WEATHERS=[
+  {id:'sunny', icon:'☀️',name:'Panas',   taxM:1.10,wasteM:1.0,eff:'Pajak +10%'},
+  {id:'cloudy',icon:'⛅',name:'Mendung', taxM:1.00,wasteM:1.0,eff:'Normal'},
+  {id:'rainy', icon:'🌧️',name:'Hujan',  taxM:0.80,wasteM:1.5,eff:'Pajak-20%, Sampah+50%'},
+];
+
+// ════════════════════════════════════════
+// GAME STATE
+// ════════════════════════════════════════
+let G={
+  money:800,day:1,happy:100,pop:0,
+  tool:'road',showBuf:true,showHeat:false,
+  weather:WEATHERS[0],rainStreak:0,
+  cfQueue:[],cfCooldown:{},
+  measurePt:null,moveSrc:null,
+  farmTimers:{},
+  activeSearch:null, // {type,tiles,found,reward}
+  autoSec:30,autoTimer:null,
+  grid:Array.from({length:ROWS},(_,r)=>Array.from({length:COLS},(_,c)=>({
+    type:'empty',variant:(r*31+c*17)%4,served:null,flagged:false,houseId:null
+  })))
+};
+let npcs=[],npcT=0;
+
+// ════════════════════════════════════════
+// CANVAS SETUP
+// ════════════════════════════════════════
+const CW=$('cw'),canvas=$('gc'),ctx=canvas.getContext('2d');
+const rainC=$('rainc'),rctx=rainC.getContext('2d');
+const floodC=$('floodc'),fctx=floodC.getContext('2d');
+const heatC=$('heatc'),hctx=heatC.getContext('2d');
+let rainDrops=[],floodParticles=[],floodActive=false;
+
+function $(id){return document.getElementById(id);}
+
+function resize(){
+  [canvas,rainC,floodC,heatC].forEach(c=>{c.width=CW.clientWidth;c.height=CW.clientHeight;});
+  drawAll();
+}
+window.addEventListener('resize',resize);
+
+// ════════════════════════════════════════
+// DRAW ENGINE
+// ════════════════════════════════════════
+const GR=['#2d5a1b','#3a7a24','#2a5219','#3d7f28'];
+function pxTile(x,y,a,b,v){ctx.fillStyle=a;ctx.fillRect(x,y,TILE,TILE);ctx.fillStyle=b;for(let i=0;i<5;i++)ctx.fillRect(x+((v*7+i*17)&31),y+((v*11+i*13)&31),2,2);}
+
+function drawAll(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawTiles();
+  if(G.showBuf)drawBuffers();
+  drawRiverZones();
+  drawBuildings();
+  drawNPCs();
+  drawMoveHighlight();
+  drawMeasureLine();
+  if(G.activeSearch)drawSearchHints();
+  if(G.showHeat)drawHeatmap();
+}
+
+function drawTiles(){
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const t=G.grid[r][c],x=c*TILE,y=r*TILE;
+    if(t.type==='empty'){pxTile(x,y,GR[0],GR[1],t.variant);}
+    else if(t.type==='road'){
+      ctx.fillStyle='#4a4a5a';ctx.fillRect(x,y,TILE,TILE);
+      ctx.fillStyle='#3a3a4a';ctx.fillRect(x+2,y+2,TILE-4,TILE-4);
+      ctx.fillStyle='#606070';ctx.fillRect(x+TILE/2-1,y+2,2,6);ctx.fillRect(x+TILE/2-1,y+TILE-8,2,6);
+    }else if(t.type==='river'){
+      const ph=(Date.now()/700+c*.3+r*.2)%(Math.PI*2);
+      ctx.fillStyle='#1a5f8a';ctx.fillRect(x,y,TILE,TILE);
+      ctx.fillStyle='#1e7ab5';ctx.fillRect(x,y+4,TILE,TILE-8);
+      ctx.fillStyle='rgba(100,180,255,.32)';ctx.fillRect(x+2,y+7+Math.sin(ph)*2|0,28,4);
+      ctx.fillStyle='rgba(180,230,255,.2)';ctx.fillRect(x+4,y+16+Math.sin(ph+1)*2|0,20,3);
+    }
+  }
+  ctx.strokeStyle='rgba(0,0,0,.1)';ctx.lineWidth=1;
+  for(let r=0;r<=ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*TILE);ctx.lineTo(COLS*TILE,r*TILE);ctx.stroke();}
+  for(let c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*TILE,0);ctx.lineTo(c*TILE,ROWS*TILE);ctx.stroke();}
+}
+
+function drawBuffers(){
+  const types=[
+    {t:'tps',     buf:BUF_TPS, col:'rgba(243,156,18,'},
+    {t:'hospital',buf:BUF_HOSP,col:'rgba(231,76,60,'},
+    {t:'school',  buf:BUF_SCH, col:'rgba(52,152,219,'},
+  ];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const tile=G.grid[r][c];
+    const found=types.find(t=>t.t===tile.type);
+    if(found){
+      const cx=c*TILE+TILE/2,cy=r*TILE+TILE/2,rad=found.buf*TILE+TILE/2;
+      ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);
+      ctx.fillStyle=found.col+'0.09)';ctx.fill();
+      ctx.setLineDash([4,4]);ctx.strokeStyle=found.col+'0.65)';ctx.lineWidth=2;ctx.stroke();ctx.setLineDash([]);
+    }
+  }
+}
+
+function drawRiverZones(){
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(G.grid[r][c].type==='river'){
+      for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){
+        const nr=r+dr,nc=c+dc;
+        if(nr<0||nr>=ROWS||nc<0||nc>=COLS||G.grid[nr][nc].type==='river')continue;
+        if(Math.abs(dr)<=1&&Math.abs(dc)<=1){ctx.fillStyle='rgba(26,111,168,.11)';ctx.fillRect(nc*TILE,nr*TILE,TILE,TILE);}
+      }
+    }
+  }
+}
+
+function drawBuildings(){
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const t=G.grid[r][c],x=c*TILE,y=r*TILE;
+    if(t.type==='house')     dHouse(x,y,t.served,t.flagged);
+    else if(t.type==='house_r') { /* right half handled by house_l */ }
+    else if(t.type==='tps')      dTPS(x,y,t.flagged);
+    else if(t.type==='hospital') dHospital(x,y,t.flagged);
+    else if(t.type==='school')   dSchool(x,y);
+    else if(t.type==='park')     dPark(x,y);
+    else if(t.type==='farm')     dFarm(x,y,t.growStage||0);
+    else if(t.type==='ranch')    dRanch(x,y);
+    else if(t.type==='mine')     dMine(x,y);
+  }
+}
+
+function dHouse(x,y,srv,flag){
+  // 2-tile wide house (draws onto right tile too)
+  const w=TILE*2;
+  ctx.fillStyle='#8B4513';ctx.fillRect(x+2,y+14,w-4,18);
+  ctx.fillStyle=srv===false?'#c0392b':flag?'#8B5E3C':'#e8d5b7';ctx.fillRect(x+3,y+15,w-6,16);
+  // door
+  ctx.fillStyle='#5d3a1a';ctx.fillRect(x+w/2-4,y+22,8,8);
+  // windows
+  ctx.fillStyle=srv===false?'#ff6b6b':'#87ceeb';
+  ctx.fillRect(x+5,y+17,6,5);ctx.fillRect(x+w-11,y+17,6,5);
+  // roof
+  ctx.fillStyle='#a00000';ctx.fillRect(x,y+6,w,9);
+  ctx.fillStyle='#c00000';
+  for(let i=0;i<w;i+=8)ctx.fillRect(x+i,y+2+Math.max(0,3-i/8*3|0),8,5);
+  ctx.fillStyle='#c00000';ctx.beginPath();ctx.moveTo(x,y+7);ctx.lineTo(x+w/2,y+1);ctx.lineTo(x+w,y+7);ctx.fill();
+  // chimney
+  ctx.fillStyle='#555';ctx.fillRect(x+w-12,y+1,5,8);
+  if(srv===false){ctx.fillStyle='#ff0';ctx.font='bold 11px monospace';ctx.fillText('!',x+w/2-3,y+12);}
+  if(flag){ctx.fillStyle='#f39c12';ctx.font='bold 9px monospace';ctx.fillText('⚠',x+2,y+12);}
+}
+function dTPS(x,y,flag){
+  ctx.fillStyle='#555';ctx.fillRect(x+3,y+10,26,20);
+  ctx.fillStyle=flag?'#e74c3c':'#f39c12';ctx.fillRect(x+5,y+12,22,16);
+  ctx.fillStyle=flag?'#c0392b':'#e67e22';ctx.fillRect(x+6,y+13,6,14);ctx.fillRect(x+14,y+13,6,14);
+  ctx.fillStyle='#d68910';ctx.fillRect(x+4,y+9,24,4);
+  ctx.fillStyle='#333';ctx.fillRect(x+13,y+7,6,3);
+  ctx.fillStyle='#2ecc71';ctx.fillRect(x+20,y+13,4,4);
+  ctx.fillStyle='#000';ctx.font='5px monospace';ctx.fillText('TPS',x+8,y+22);
+  if(flag){ctx.fillStyle='#ff0';ctx.font='bold 9px monospace';ctx.fillText('⚠',x+1,y+11);}
+}
+function dHospital(x,y,flag){
+  ctx.fillStyle='#ccc';ctx.fillRect(x+2,y+5,28,25);
+  ctx.fillStyle='#fff';ctx.fillRect(x+4,y+7,24,20);
+  // cross
+  ctx.fillStyle='#e74c3c';ctx.fillRect(x+13,y+9,6,14);ctx.fillRect(x+9,y+13,14,6);
+  ctx.fillStyle='#aaa';ctx.fillRect(x+10,y+3,12,4);
+  ctx.fillStyle='#666';ctx.fillRect(x+13,y+1,6,3);
+  // windows
+  ctx.fillStyle='#87ceeb';ctx.fillRect(x+4,y+8,5,5);ctx.fillRect(x+23,y+8,5,5);
+  ctx.fillStyle='#2ecc71';ctx.font='5px monospace';ctx.fillText('RS',x+9,y+29);
+  if(flag){ctx.fillStyle='#f39c12';ctx.font='bold 9px monospace';ctx.fillText('⚠',x+1,y+12);}
+}
+function dSchool(x,y){
+  ctx.fillStyle='#c8a84b';ctx.fillRect(x+2,y+8,28,22);
+  ctx.fillStyle='#e6c56d';ctx.fillRect(x+4,y+10,24,18);
+  ctx.fillStyle='#8B6914';ctx.fillRect(x+13,y+20,6,8);
+  ctx.fillStyle='#5a3e00';ctx.fillRect(x+4,y+6,24,5);
+  ctx.fillStyle='#7a5200';ctx.beginPath();ctx.moveTo(x+4,y+7);ctx.lineTo(x+16,y+2);ctx.lineTo(x+28,y+7);ctx.fill();
+  ctx.fillStyle='#87ceeb';ctx.fillRect(x+5,y+12,6,6);ctx.fillRect(x+21,y+12,6,6);
+  ctx.fillStyle='#2196F3';ctx.font='5px monospace';ctx.fillText('EDU',x+6,y+28);
+}
+function dPark(x,y){
+  ctx.fillStyle='#1a7a1a';ctx.fillRect(x+2,y+20,28,10);
+  ctx.fillStyle='#5d3a1a';ctx.fillRect(x+13,y+10,6,12);
+  ctx.fillStyle='#0a5c0a';ctx.fillRect(x+8,y+12,16,8);
+  ctx.fillStyle='#1a7a1a';ctx.fillRect(x+10,y+6,12,8);
+  ctx.fillStyle='#25a025';ctx.fillRect(x+12,y+2,8,6);
+}
+function dFarm(x,y,stage){
+  ctx.fillStyle='#8B6914';ctx.fillRect(x+2,y+22,28,8);
+  const colors=['#3a7a24','#5a9a20','#8aaa30','#c8a830'];
+  const h=[4,8,14,20];
+  ctx.fillStyle=colors[stage]||colors[3];
+  for(let i=0;i<6;i++)ctx.fillRect(x+3+i*5,y+22-h[stage],3,h[stage]);
+  if(stage===3){ctx.fillStyle='#f1c40f';for(let i=0;i<6;i++)ctx.fillRect(x+4+i*5,y+21-h[stage],2,3);}
+  ctx.fillStyle='#c0392b';ctx.font='6px monospace';ctx.fillText('🌾',x+10,y+30);
+}
+function dRanch(x,y){
+  ctx.fillStyle='#8B4513';ctx.fillRect(x+2,y+18,28,12);
+  ctx.fillStyle='#A0522D';ctx.fillRect(x+4,y+20,24,10);
+  ctx.fillStyle='#5d3a1a';ctx.fillRect(x+3,y+16,26,5);
+  ctx.fillStyle='#2ecc71';ctx.fillRect(x+4,y+16,24,4);
+  // cow
+  ctx.fillStyle='#fff';ctx.fillRect(x+8,y+8,14,10);
+  ctx.fillStyle='#888';ctx.fillRect(x+10,y+6,4,4);ctx.fillRect(x+18,y+6,4,4);
+  ctx.fillStyle='#000';ctx.fillRect(x+11,y+7,2,2);ctx.fillRect(x+19,y+7,2,2);
+  ctx.fillStyle='#f39c12';ctx.fillRect(x+14,y+17,4,4);
+}
+function dMine(x,y){
+  ctx.fillStyle='#555';ctx.fillRect(x+2,y+4,28,26);
+  ctx.fillStyle='#333';ctx.fillRect(x+4,y+6,24,22);
+  ctx.fillStyle='#777';ctx.fillRect(x+10,y+10,12,16);
+  ctx.fillStyle='#222';ctx.fillRect(x+12,y+12,8,14);
+  // pickaxe icon
+  ctx.fillStyle='#aaa';ctx.fillRect(x+5,y+8,6,3);
+  ctx.fillStyle='#888';ctx.fillRect(x+10,y+8,2,10);
+  // mineral glints
+  ctx.fillStyle='#f1c40f';ctx.fillRect(x+14,y+14,3,3);
+  ctx.fillStyle='#3498db';ctx.fillRect(x+19,y+18,3,3);
+  ctx.fillStyle='#e91e63';ctx.fillRect(x+12,y+20,2,2);
+  ctx.fillStyle='#e67e22';ctx.font='5px monospace';ctx.fillText('⛏️',x+6,y+30);
+}
+
+function drawMoveHighlight(){
+  if(!G.moveSrc)return;
+  const[r,c]=G.moveSrc;
+  const pulse=0.5+0.5*Math.sin(Date.now()/200);
+  ctx.strokeStyle=`rgba(0,${150+Math.round(pulse*105)},255,${0.7+pulse*0.3})`;
+  ctx.lineWidth=3;ctx.strokeRect(c*TILE+2,r*TILE+2,TILE-4,TILE-4);
+  ctx.fillStyle=`rgba(0,200,255,${0.07+pulse*0.07})`;ctx.fillRect(c*TILE,r*TILE,TILE,TILE);
+  ctx.fillStyle='rgba(22,27,34,.85)';ctx.fillRect(c*TILE,r*TILE-14,64,12);
+  ctx.fillStyle='#00d4ff';ctx.font='4px monospace';ctx.fillText('→ PINDAH KE?',c*TILE+2,r*TILE-5);
+}
+function drawMeasureLine(){
+  if(!G.measurePt)return;
+  const[r1,c1]=G.measurePt;
+  ctx.fillStyle='rgba(0,212,255,.28)';ctx.fillRect(c1*TILE,r1*TILE,TILE,TILE);
+  ctx.strokeStyle='#00d4ff';ctx.lineWidth=2;ctx.strokeRect(c1*TILE+1,r1*TILE+1,TILE-2,TILE-2);
+}
+
+function drawSearchHints(){
+  if(!G.activeSearch)return;
+  const t=Date.now()/500;
+  G.activeSearch.tiles.forEach((tile,i)=>{
+    if(tile.found)return;
+    const pulse=0.4+0.4*Math.sin(t+i);
+    ctx.fillStyle=`rgba(255,200,0,${pulse*0.3})`;
+    ctx.fillRect(tile.c*TILE,tile.r*TILE,TILE,TILE);
+    ctx.font='14px monospace';ctx.fillText('❓',tile.c*TILE+8,tile.r*TILE+22);
+  });
+}
+
+// ── HEATMAP ──
+function drawHeatmap(){
+  hctx.clearRect(0,0,heatC.width,heatC.height);
+  // count house density
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    let density=0;
+    for(let dr=-3;dr<=3;dr++)for(let dc=-3;dc<=3;dc++){
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&G.grid[nr][nc].type==='house')density++;
+    }
+    if(density>0){
+      const alpha=Math.min(density/8,0.7);
+      const r2=Math.min(255,density*40),b=Math.max(0,200-density*40);
+      hctx.fillStyle=`rgba(${r2},50,${b},${alpha})`;
+      hctx.fillRect(c*TILE,r*TILE,TILE,TILE);
+    }
+  }
+}
+
+// ── NPC ──
+function spawnNPC(){
+  const hs=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type==='house')hs.push([r,c]);
+  if(!hs.length||npcs.length>=G.pop*2+4)return;
+  const[hr,hc]=hs[Math.random()*hs.length|0];
+  npcs.push({x:hc*TILE+TILE/2,y:hr*TILE+TILE/2,tx:Math.random()*COLS*TILE,ty:Math.random()*ROWS*TILE,
+    col:`hsl(${Math.random()*360},70%,65%)`,spd:.35+Math.random()*.4,isThief:false});
+}
+function updateNPCs(){
+  for(const n of npcs){
+    const dx=n.tx-n.x,dy=n.ty-n.y,d=Math.sqrt(dx*dx+dy*dy);
+    if(d<2){n.tx=Math.random()*COLS*TILE;n.ty=Math.random()*ROWS*TILE;}
+    else{n.x+=dx/d*n.spd;n.y+=dy/d*n.spd;}
+  }
+  while(npcs.length>G.pop*2+6)npcs.splice(0,1);
+}
+function drawNPCs(){
+  for(const n of npcs){
+    const nx=Math.round(n.x),ny=Math.round(n.y);
+    if(n.isThief){
+      ctx.fillStyle='#000';ctx.fillRect(nx-3,ny-5,6,8);
+      ctx.fillStyle='#e74c3c';ctx.fillRect(nx-2,ny-3,4,6);
+    }else{
+      ctx.fillStyle=n.col;ctx.fillRect(nx-2,ny-4,4,6);
+      ctx.fillStyle='#ffe0bd';ctx.fillRect(nx-2,ny-8,4,4);
+    }
+  }
+}
+
+// ── RAIN VISUAL ──
+function initRain(){rainDrops=[];for(let i=0;i<120;i++)rainDrops.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,spd:3+Math.random()*4,len:8+Math.random()*12});}
+function drawRain(){
+  if(G.weather.id!=='rainy'){rctx.clearRect(0,0,rainC.width,rainC.height);return;}
+  rctx.clearRect(0,0,rainC.width,rainC.height);
+  rctx.strokeStyle='rgba(120,180,255,.4)';rctx.lineWidth=1;
+  for(const d of rainDrops){
+    rctx.beginPath();rctx.moveTo(d.x,d.y);rctx.lineTo(d.x-2,d.y+d.len);rctx.stroke();
+    d.y+=d.spd;d.x-=.5;
+    if(d.y>rainC.height){d.y=-d.len;d.x=Math.random()*rainC.width;}
+  }
+}
+
+// ── FLOOD ANIMATION ──
+function startFloodAnim(){
+  floodActive=true;floodParticles=[];
+  for(let i=0;i<60;i++)floodParticles.push({x:Math.random()*canvas.width,y:canvas.height,vx:(Math.random()-.5)*2,vy:-(1+Math.random()*2),life:1,maxLife:60+Math.random()*60});
+  setTimeout(()=>{floodActive=false;fctx.clearRect(0,0,floodC.width,floodC.height);},5000);
+}
+function drawFlood(){
+  if(!floodActive){if(floodParticles.length)fctx.clearRect(0,0,floodC.width,floodC.height);return;}
+  fctx.clearRect(0,0,floodC.width,floodC.height);
+  // rising water
+  const level=canvas.height*(0.3+0.4*(1-floodParticles[0]?.life||0));
+  fctx.fillStyle='rgba(30,100,200,.25)';fctx.fillRect(0,level,floodC.width,floodC.height-level);
+  // waves
+  fctx.strokeStyle='rgba(80,150,255,.5)';fctx.lineWidth=2;
+  for(let wx=0;wx<floodC.width;wx+=40){
+    const ph=(Date.now()/500+wx*.1)%(Math.PI*2);
+    fctx.beginPath();fctx.moveTo(wx,level+Math.sin(ph)*6);
+    fctx.lineTo(wx+40,level+Math.sin(ph+1)*6);fctx.stroke();
+  }
+  for(const p of floodParticles){
+    p.x+=p.vx;p.y+=p.vy;p.life-=0.008;
+    fctx.fillStyle=`rgba(100,160,255,${Math.max(0,p.life)*0.6})`;
+    fctx.fillRect(p.x,p.y,4,8);
+    if(p.life<=0){p.x=Math.random()*canvas.width;p.y=canvas.height;p.life=1;}
+  }
+}
+
+// ── THIEF ANIMATION ON MAP ──
+function showThiefAnim(r,c){
+  const div=document.createElement('div');div.className='thief-flash';
+  CW.appendChild(div);setTimeout(()=>div.remove(),1000);
+  // Flash thief NPC
+  npcs.forEach(n=>{if(!n.isThief){n.isThief=true;setTimeout(()=>n.isThief=false,2000);}});
+}
+
+// ════════════════════════════════════════
+// ANALYSIS HELPERS
+// ════════════════════════════════════════
+function analyze(){
+  let srv=0,uns=0;
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const t=G.grid[r][c];
+    if(t.type==='house'){t.served=covered(r,c,'tps',BUF_TPS);t.served?srv++:uns++;}
+  }
+  return{srv,uns};
+}
+function covered(hr,hc,btype,buf){
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)
+    if(G.grid[r][c].type===btype&&Math.sqrt((r-hr)**2+(c-hc)**2)<=buf)return true;
+  return false;
+}
+function riverDist(row,col){
+  let d=999;
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)
+    if(G.grid[r][c].type==='river'){const v=Math.sqrt((r-row)**2+(c-col)**2);if(v<d)d=v;}
+  return d;
+}
+function nearbyCount(row,col,rad,type){
+  let n=0;
+  for(let r=Math.max(0,row-rad);r<=Math.min(ROWS-1,row+rad);r++)
+    for(let c=Math.max(0,col-rad);c<=Math.min(COLS-1,col+rad);c++)
+      if(!(r===row&&c===col)&&G.grid[r][c].type===type)n++;
+  return n;
+}
+function countType(type){let n=0;for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type===type)n++;return n;}
+function housesNearRiver(){let n=0;for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type==='house'&&riverDist(r,c)<=2)n++;return n;}
+
+// ════════════════════════════════════════
+// SEARCH / FIND GAME
+// ════════════════════════════════════════
+function startSearchGame(type){
+  sfxThief();
+  // Generate 8-12 decoy tiles + 1 correct tile
+  const allTiles=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)
+    if(G.grid[r][c].type==='empty'||G.grid[r][c].type==='road')allTiles.push({r,c,found:false,isTarget:false});
+  const shuffled=allTiles.sort(()=>Math.random()-.5).slice(0,10);
+  const target=shuffled[Math.random()*shuffled.length|0];
+  target.isTarget=true;
+  G.activeSearch={type,tiles:shuffled,target,found:false,reward:type==='thief'?120:80};
+  addLog(`🔍 ${type==='thief'?'Pencuri':'Barang hilang'} terdeteksi! Klik tile mencurigakan (❓)!`,'danger');
+  drawAll();
+}
+
+function handleSearchClick(r,c){
+  if(!G.activeSearch)return;
+  const tile=G.activeSearch.tiles.find(t=>t.r===r&&t.c===c);
+  if(!tile)return;
+  sfxClick();
+  tile.found=true;
+  if(tile.isTarget){
+    sfxSuccess();sfxCoin();
+    G.money+=G.activeSearch.reward;
+    G.happy=Math.min(100,G.happy+10);
+    const msg=G.activeSearch.type==='thief'?`🎉 Pencuri ditangkap!\n+${G.activeSearch.reward}💰 reward!\n+10 Kebahagiaan`:`🎉 Barang ditemukan!\n+${G.activeSearch.reward}💰 hadiah!\n+10 Kebahagiaan`;
+    showNotif(G.activeSearch.type==='thief'?'👮 PENCURI TERTANGKAP!':'🎒 BARANG DITEMUKAN!',msg);
+    G.activeSearch=null;
+    updateUI();drawAll();
+  }else{
+    sfxError();
+    G.money=Math.max(0,G.money-20);
+    addLog('❌ Salah tile! Coba yang lain... -20💰','warn');
+    // Remove wrong tile after 1s
+    setTimeout(()=>{tile.found=true;drawAll();},800);
+  }
+}
+
+// ════════════════════════════════════════
+// CONFLICT SYSTEM
+// ════════════════════════════════════════
+const CONFLICTS={
+  waste:{
+    ico:'🗑️',ttl:'KRISIS SAMPAH!',bdr:'var(--red)',bg:'#2a0a0a',
+    check:()=>{const{uns}=analyze();return uns>=5&&countType('house')>=5;},
+    loc:()=>null,
+    desc:()=>`${analyze().uns} rumah tidak terlayani TPS!\n\nSampah menumpuk di jalan.\nWarga mulai berdemo!\n\nBuffer Analysis diperlukan!`,
+    opts:[
+      {lbl:'A. Bangun TPS di titik optimal (Buffer Analysis)',dsc:'Pusat cluster rumah',correct:true,
+       res:'✅ Buffer Analysis berhasil!\nTPS baru di posisi optimal.\nSemua rumah dalam radius 3 petak.\n\n+15 Kebahagiaan | +50💰',
+       fu:{ttl:'LANGKAH: Verifikasi Buffer',opts:[{lbl:'Aktifkan BUFFER VIEW',act:'buf'},{lbl:'Gunakan UKUR cek jarak',act:'measure'}]},
+       fx:()=>{G.happy=Math.min(100,G.happy+15);G.money+=50;sfxSuccess();addLog('TPS optimal! +50💰','good');}},
+      {lbl:'B. Denda warga buang sampah sembarangan',dsc:'Tanpa infrastruktur',correct:false,
+       res:'❌ Denda tanpa fasilitas!\nWarga makin marah!\n\n-8 warga | -20 Kebahagiaan',
+       fx:()=>{G.pop=Math.max(0,G.pop-8);G.happy=Math.max(0,G.happy-20);sfxFail();}},
+      {lbl:'C. Biarkan saja dulu',dsc:'Tidak ada tindakan',correct:false,
+       res:'❌ Dibiarkan makin parah!\nDenda lingkungan besar.\n\n-12 warga | -100💰',
+       fx:()=>{G.pop=Math.max(0,G.pop-12);G.money=Math.max(0,G.money-100);sfxFail();}},
+    ]
+  },
+  land:{
+    ico:'📋',ttl:'SENGKETA HAK LAHAN!',bdr:'var(--orange)',bg:'#2a1500',
+    check:()=>{for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type==='house'&&nearbyCount(r,c,1,'house')>=3)return true;return false;},
+    loc:()=>{for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type==='house'&&nearbyCount(r,c,1,'house')>=3)return[r,c];return null;},
+    desc:(loc)=>`3+ rumah dalam radius 1 petak\ndi kawasan ${loc||'kota'}!\n\nBatas kepemilikan tidak jelas.\nSpatial Measurement diperlukan!`,
+    opts:[
+      {lbl:'A. Pengukuran & delineasi lahan resmi (GIS)',dsc:'Spatial Measurement',correct:true,
+       res:'✅ Pengukuran GIS berhasil!\nBatas lahan resmi ditetapkan.\n1 petak = 10 meter.\n\n+10 Kebahagiaan | -30💰 biaya',
+       fu:{ttl:'LANGKAH: Gunakan alat UKUR',opts:[{lbl:'Gunakan UKUR verifikasi jarak',act:'measure'},{lbl:'PINDAH objek jika terlalu dekat',act:'move'}]},
+       fx:()=>{G.happy=Math.min(100,G.happy+10);G.money=Math.max(0,G.money-30);sfxSuccess();}},
+      {lbl:'B. Biarkan warga selesaikan sendiri',dsc:'Tanpa mediasi',correct:false,
+       res:'❌ Tanpa mediasi: keributan!\n\n-6 warga | -15 Kebahagiaan',
+       fx:()=>{G.pop=Math.max(0,G.pop-6);G.happy=Math.max(0,G.happy-15);sfxFail();}},
+      {lbl:'C. Gusur paksa semua yang berdekatan',dsc:'Penertiban keras',correct:false,
+       res:'❌ Penggusuran paksa: kerusuhan!\n\n-16 warga | -80💰',
+       fx:()=>{G.pop=Math.max(0,G.pop-16);G.money=Math.max(0,G.money-80);sfxFail();}},
+    ]
+  },
+  riverpoll:{
+    ico:'🌊',ttl:'PENCEMARAN SUNGAI!',bdr:'var(--blue)',bg:'#0a0a2a',
+    check:()=>{for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type==='tps'&&riverDist(r,c)<=2)return true;return false;},
+    loc:()=>{for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type==='tps'&&riverDist(r,c)<=2)return[r,c];return null;},
+    desc:(loc)=>`TPS di ${loc?`(${loc[1]},${loc[0]})`:'kota'} hanya ≤2 petak dari sungai!\n\nLindi mencemari badan air.\nStandar GIS: min 3 petak (30m)!`,
+    opts:[
+      {lbl:'A. Relokasi TPS ≥3 petak dari sungai',dsc:'Buffer Zone analysis',correct:true,
+       res:'✅ TPS berhasil direlokasi!\nBuffer Zone terpenuhi ≥3 petak.\nSungai kembali bersih! 💧\n\n+12 Kebahagiaan | +80💰',
+       fu:{ttl:'LANGKAH: Pakai PINDAH untuk relokasi',opts:[{lbl:'Gunakan PINDAH relokasi TPS',act:'move'},{lbl:'Aktifkan BUFFER VIEW cek jarak',act:'buf'}]},
+       fx:()=>{for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type==='tps')G.grid[r][c].flagged=false;G.happy=Math.min(100,G.happy+12);G.money+=80;sfxSuccess();}},
+      {lbl:'B. Pasang filter saja di TPS',dsc:'Tanpa relokasi',correct:false,
+       res:'❌ Filter tidak cukup!\nPencemaran berlanjut.\n\n-5 warga | -60💰',
+       fx:()=>{G.pop=Math.max(0,G.pop-5);G.money=Math.max(0,G.money-60);sfxFail();}},
+      {lbl:'C. Sosialisasi jangan minum air sungai',dsc:'Tidak menyelesaikan masalah',correct:false,
+       res:'❌ Sumber masalah adalah TPS!\nBukan perilaku warga.\n\n-3 warga | -12 Kebahagiaan',
+       fx:()=>{G.pop=Math.max(0,G.pop-3);G.happy=Math.max(0,G.happy-12);sfxFail();}},
+    ]
+  },
+  flood:{
+    ico:'🌧️',ttl:'BANJIR MELANDA!',bdr:'#1a6fa8',bg:'#0a1a2a',
+    check:()=>G.weather.id==='rainy'&&G.rainStreak>=3,
+    loc:()=>null,
+    desc:()=>`Hujan ${G.rainStreak} hari berurut!\n\nSungai meluap, kawasan rendah\nterancam banjir.\n\nAnalisis elevasi spasial diperlukan!`,
+    opts:[
+      {lbl:'A. Bangun tanggul di sempadan sungai',dsc:'Analisis spasial elevasi',correct:true,
+       res:'✅ Tanggul dibangun!\nAnalisis elevasi berhasil.\nBanjir terkendali!\n\n+20 Kebahagiaan | +120💰',
+       fx:()=>{G.happy=Math.min(100,G.happy+20);G.money+=120;G.rainStreak=0;sfxSuccess();addLog('Tanggul berhasil! +120💰','good');}},
+      {lbl:'B. Evakuasi darurat semua warga',dsc:'Sementara saja',correct:false,
+       res:'❌ Hanya sementara!\nBanjir akan berulang.\n\n-10 warga | -25 Kebahagiaan',
+       fx:()=>{G.pop=Math.max(0,G.pop-10);G.happy=Math.max(0,G.happy-25);sfxFail();}},
+      {lbl:'C. Tunggu hujan reda sendiri',dsc:'Tidak ada tindakan',correct:false,
+       res:'❌ Pasif saat banjir!\nKerugian masif.\n\n-18 warga | -150💰',
+       fx:()=>{G.pop=Math.max(0,G.pop-18);G.money=Math.max(0,G.money-150);sfxFail();}},
+    ]
+  },
+  malaria:{
+    ico:'🦟',ttl:'WABAH MALARIA!',bdr:'var(--purple)',bg:'#1a0a2a',
+    check:()=>countType('river')>0&&housesNearRiver()>=3&&G.pop>=10,
+    loc:()=>{for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type==='house'&&riverDist(r,c)<=2)return[r,c];return null;},
+    desc:()=>`${housesNearRiver()} rumah dalam 2 petak sungai!\n\nGenangan air = sarang nyamuk.\nWabah malaria menyebar!\n\nSolusi spasial+medis diperlukan.`,
+    opts:[
+      {lbl:'A. Fogging + relokasi dari sempadan sungai',dsc:'GIS + medis',correct:true,
+       res:'✅ Kombinasi berhasil!\nRelokasi dari sempadan sungai.\nWabah terputus!\n\n+18 Kebahagiaan | +100💰',
+       fu:{ttl:'Relokasi dengan PINDAH',opts:[{lbl:'PINDAH rumah dari sempadan',act:'move'},{lbl:'UKUR jarak rumah ke sungai',act:'measure'}]},
+       fx:()=>{G.happy=Math.min(100,G.happy+18);G.money+=100;sfxSuccess();}},
+      {lbl:'B. Fogging saja',dsc:'Medis tanpa spasial',correct:false,
+       res:'❌ Sementara saja!\nSumber masalah tetap ada.\n\n-4 warga | -8 Kebahagiaan',
+       fx:()=>{G.pop=Math.max(0,G.pop-4);G.happy=Math.max(0,G.happy-8);sfxFail();}},
+      {lbl:'C. Karantina total',dsc:'Terlalu ekstrem',correct:false,
+       res:'❌ Karantina tanpa relokasi!\nWabah tak selesai.\n\n-14 warga | -90💰',
+       fx:()=>{G.pop=Math.max(0,G.pop-14);G.money=Math.max(0,G.money-90);sfxFail();}},
+    ]
+  },
+  theft:{
+    ico:'🦹',ttl:'PENCURIAN MENINGKAT!',bdr:'var(--red)',bg:'#2a0a0a',
+    check:()=>G.pop>=20&&G.happy<60,
+    loc:()=>null,
+    desc:()=>`Tingkat kejahatan meningkat!\nPopulasi ${G.pop} warga, kebahagiaan ${G.happy}%.\n\nWarga melaporkan pencurian\ndi beberapa titik kota.\n\nDispatch petugas!`,
+    opts:[
+      {lbl:'A. Cari & tangkap pencuri (mini-game!)',dsc:'Klik tile mencurigakan di peta',correct:true,
+       res:'✅ Misi pencarian dimulai!\nTemukan pencuri di peta.\n\nKlik tile ❓ yang muncul!',
+       fx:()=>{G.happy=Math.min(100,G.happy+5);closeResult();setTimeout(()=>startSearchGame('thief'),300);}},
+      {lbl:'B. Tambah patroli rutin (+biaya keamanan)',dsc:'Preventif, tidak langsung',correct:false,
+       res:'❌ Patroli butuh waktu!\nPencurian masih terjadi.\n\n-50💰 biaya | +5 Kebahagiaan (lambat)',
+       fx:()=>{G.money=Math.max(0,G.money-50);G.happy=Math.min(100,G.happy+5);sfxFail();}},
+      {lbl:'C. Abaikan laporan',dsc:'Tidak ada tindakan',correct:false,
+       res:'❌ Diabaikan = makin parah!\n\n-10 warga pergi | -20 Kebahagiaan',
+       fx:()=>{G.pop=Math.max(0,G.pop-10);G.happy=Math.max(0,G.happy-20);sfxFail();}},
+    ]
+  },
+  lostitem:{
+    ico:'🎒',ttl:'BARANG WARGA HILANG!',bdr:'var(--yellow)',bg:'#2a2000',
+    check:()=>G.pop>=8&&Math.random()<0.15&&G.day%5===0,
+    loc:()=>null,
+    desc:()=>`Seorang warga kehilangan tas!\nDilaporkan hilang di sekitar kota.\n\nBantu cari ya!`,
+    opts:[
+      {lbl:'A. Kerahkan tim pencarian (mini-game!)',dsc:'Cari barang di peta',correct:true,
+       res:'✅ Tim pencarian dikerahkan!\nCari barang di peta!\n\nKlik tile ❓ yang muncul!',
+       fx:()=>{closeResult();setTimeout(()=>startSearchGame('item'),300);}},
+      {lbl:'B. Umumkan di pengeras suara',dsc:'Peluang ditemukan kecil',correct:false,
+       res:'❌ Tidak ditemukan!\nWarga kecewa.\n\n-5 Kebahagiaan',
+       fx:()=>{G.happy=Math.max(0,G.happy-5);sfxFail();}},
+    ]
+  },
+};
+
+function checkConflicts(){
+  for(const key of Object.keys(CONFLICTS)){
+    const cd=G.cfCooldown[key]||0;
+    if(G.day-cd<3)continue;
+    if(CONFLICTS[key].check()){
+      if(!G.cfQueue.includes(key)){G.cfQueue.push(key);G.cfCooldown[key]=G.day;}
+    }
+  }
+  if(G.cfQueue.length>0&&!$('cfov').classList.contains('show'))showNextConflict();
+}
+
+function showNextConflict(){
+  if(!G.cfQueue.length)return;
+  const key=G.cfQueue.shift();
+  const cf=CONFLICTS[key];
+  sfxConflict();
+  // flag tiles
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)G.grid[r][c].flagged=false;
+  if(key==='riverpoll'){for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type==='tps'&&riverDist(r,c)<=2)G.grid[r][c].flagged=true;}
+  if(key==='land'){for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.grid[r][c].type==='house'&&nearbyCount(r,c,1,'house')>=3)G.grid[r][c].flagged=true;}
+  if(key==='flood'){startFloodAnim();}
+  if(key==='theft'){showThiefAnim(0,0);}
+  drawAll();
+  const rawLoc=cf.loc&&cf.loc();
+  const locStr=rawLoc?`Tile (${rawLoc[1]},${rawLoc[0]})`:'-';
+  $('cf-ico').textContent=cf.ico;$('cf-ttl').textContent=cf.ttl;$('cf-ttl').style.color=cf.bdr;
+  $('cf-hdr').style.background=cf.bg;$('cfbox').style.borderColor=cf.bdr;
+  $('cf-loc').textContent=`📍 ${locStr}  •  Hari ${G.day}`;
+  $('cf-desc').textContent=typeof cf.desc==='function'?cf.desc(rawLoc&&`(${rawLoc[1]},${rawLoc[0]})`):cf.desc;
+  const od=$('cf-opts');od.innerHTML='';
+  cf.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='cfopt';b.innerHTML=`<div class="ol">${o.lbl}</div><div class="od">${o.dsc}</div>`;b.onclick=()=>resolveConflict(key,i);od.appendChild(b);});
+  stopAutoDay();$('cfov').classList.add('show');
+}
+
+function resolveConflict(key,idx){
+  const opt=CONFLICTS[key].opts[idx];
+  $('cfov').classList.remove('show');
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)G.grid[r][c].flagged=false;
+  if(opt.fx)opt.fx();
+  const ok=opt.correct;
+  $('rsbox').className=ok?'okb':'ngb';
+  $('rs-hdr').className='rs-hdr '+(ok?'okh':'ngh');
+  $('rs-ico').textContent=ok?'✅':'❌';$('rs-ttl').textContent=ok?'SOLUSI TEPAT!':'SOLUSI KELIRU!';$('rs-ttl').style.color=ok?'var(--green)':'var(--red)';
+  $('rs-body').textContent=opt.res;
+  const fu=$('rs-fu'),fo=$('rs-fopts');
+  if(ok&&opt.fu){fu.style.display='block';$('rs-fttl').textContent=opt.fu.ttl;fo.innerHTML='';
+    opt.fu.opts.forEach(fop=>{const b=document.createElement('button');b.className='cfopt';b.innerHTML=`<div class="ol">${fop.lbl}</div>`;b.onclick=()=>{sfxClick();if(fop.act==='buf'){G.showBuf=true;$('bufbtn').textContent='📡 BUF ON';$('bufbtn').className='hudbtn on';}if(fop.act==='measure')selT(document.querySelector('[data-tool="measure"]'),'measure');if(fop.act==='move')selT(document.querySelector('[data-tool="move"]'),'move');closeResult();};fo.appendChild(b);});
+    $('rs-close').textContent='LEWATI →';}
+  else{fu.style.display='none';$('rs-close').textContent='✓ LANJUTKAN';}
+  $('rsov').classList.add('show');updateUI();drawAll();
+}
+function closeResult(){$('rsov').classList.remove('show');if(G.cfQueue.length>0)setTimeout(showNextConflict,500);else startAutoDay();}
+
+// ════════════════════════════════════════
+// WEATHER
+// ════════════════════════════════════════
+function updateWeather(){
+  const r=Math.random();
+  const prev=G.weather.id;
+  G.weather=r<.5?WEATHERS[0]:r<.75?WEATHERS[1]:WEATHERS[2];
+  if(G.weather.id==='rainy'){G.rainStreak++;initRain();startRainSound();}
+  else{G.rainStreak=0;stopRainSound();}
+  $('wbadge').textContent=G.weather.icon;
+  $('iwth').textContent=G.weather.icon+' '+G.weather.name;
+  $('irain').textContent=G.rainStreak+'h';
+  $('iwef').textContent=G.weather.eff;
+  $('iwef').className='v '+(G.weather.id==='sunny'?'ok':G.weather.id==='rainy'?'bad':'mid');
+  addLog(`Cuaca H${G.day}: ${G.weather.icon} ${G.weather.name}`,'info');
+}
+
+// ════════════════════════════════════════
+// AUTO DAY TIMER
+// ════════════════════════════════════════
+function startAutoDay(){
+  clearInterval(G.autoTimer);G.autoSec=30;
+  $('daybtn').textContent=`⏭ AUTO ${G.autoSec}s`;
+  G.autoTimer=setInterval(()=>{G.autoSec--;$('daybtn').textContent=`⏭ AUTO ${G.autoSec}s`;if(G.autoSec<=0){clearInterval(G.autoTimer);nextDay();}},1000);
+}
+function stopAutoDay(){clearInterval(G.autoTimer);$('daybtn').textContent='⏭ NEXT DAY';}
+
+// ════════════════════════════════════════
+// NEXT DAY
+// ════════════════════════════════════════
+function nextDay(){
+  stopAutoDay();sfxNextDay();G.day++;
+  updateWeather();
+  const hc=countType('house');
+  const tax=Math.round(hc*22*G.weather.taxM);
+  G.money+=tax;
+  if(tax>0)addLog(`+${tax}💰 pajak H${G.day} ${G.weather.icon}`,'good');
+  // farm harvest
+  const farms=countType('farm');
+  if(farms>0&&G.day%3===0){
+    const h=farms*35;G.money+=h;sfxHarvest();addLog(`🌾 Panen kebun! +${h}💰`,'good');
+    // advance grow stage
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)
+      if(G.grid[r][c].type==='farm'){G.grid[r][c].growStage=Math.min(3,(G.grid[r][c].growStage||0)+1);}
+  }
+  // ranch income
+  const ranches=countType('ranch');
+  if(ranches>0){const ri=ranches*18;G.money+=ri;addLog(`🐄 Peternakan +${ri}💰`,'good');}
+  // populate
+  if(hc>0){G.pop=Math.min(hc*4,G.pop+Math.floor(hc*.8+1));spawnNPC();spawnNPC();}
+  // waste penalty
+  const{uns}=analyze();
+  const effUns=Math.ceil(uns*G.weather.wasteM);
+  if(effUns>0&&G.day>2){const pen=effUns*15;G.money=Math.max(0,G.money-pen);sfxWarn();addLog(`⚠️ ${effUns} rumah tak terlayani! -${pen}💰`,'danger');}
+  if(G.money<=0){sfxConflict();showNotif('💸 BANGKRUT!','Saldo kota habis!\nRefresh untuk main ulang.');}
+  else{setTimeout(checkConflicts,400);}
+  addLog(`══ HARI ${G.day} ══`,'info');
+  updateUI();drawAll();startAutoDay();
+}
+
+// ════════════════════════════════════════
+// TOOL SYSTEM
+// ════════════════════════════════════════
+function selT(btn,tool){
+  sfxClick();G.tool=tool;G.measurePt=null;G.moveSrc=null;
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  const hints={measure:'📏 Klik tile pertama...',move:'🔀 Klik objek sumber...',inspect:'🔍 Klik tile untuk inspeksi'};
+  const hint=$('toolhint');
+  if(hints[tool]){hint.style.display='block';hint.textContent=hints[tool];}
+  else hint.style.display='none';
+  drawAll();
+}
+
+// ════════════════════════════════════════
+// CANVAS EVENTS
+// ════════════════════════════════════════
+function getTile(e){
+  const rect=canvas.getBoundingClientRect();
+  const sx=canvas.width/rect.width,sy=canvas.height/rect.height;
+  const c=Math.floor((e.clientX-rect.left)*sx/TILE);
+  const r=Math.floor((e.clientY-rect.top)*sy/TILE);
+  return{r,c,valid:c>=0&&c<COLS&&r>=0&&r<ROWS};
+}
+
+canvas.addEventListener('mousedown',e=>{
+  if(e.button!==0)return;
+  const{r,c,valid}=getTile(e);if(!valid)return;
+  const tile=G.grid[r][c],tool=G.tool;
+
+  // search click
+  if(G.activeSearch){handleSearchClick(r,c);return;}
+
+  // MEASURE
+  if(tool==='measure'){
+    sfxClick();
+    if(!G.measurePt){G.measurePt=[r,c];$('toolhint').textContent=`📏 Tile 1: (${c},${r}) → klik tile 2`;}
+    else{
+      const[r1,c1]=G.measurePt;const dist=Math.sqrt((r-r1)**2+(c-c1)**2).toFixed(2);
+      const meter=(dist*10).toFixed(1);
+      addLog(`📏 (${c1},${r1})→(${c},${r}): ${dist}ptk = ${meter}m`,'info');
+      $('toolhint').textContent=`📏 ${dist} petak = ${meter}m`;
+      G.measurePt=null;setTimeout(()=>{$('toolhint').textContent='📏 Klik tile pertama...';drawAll();},3000);
+    }
+    drawAll();return;
+  }
+  // MOVE
+  if(tool==='move'){
+    sfxClick();
+    if(!G.moveSrc){
+      if(tile.type==='empty'){sfxError();addLog('Tidak ada objek!','warn');return;}
+      G.moveSrc=[r,c];$('toolhint').textContent=`🔀 Pindahkan ${tile.type} dari (${c},${r})...`;
+    }else{
+      const[fr,fc]=G.moveSrc;
+      if(fr===r&&fc===c){G.moveSrc=null;addLog('Dibatalkan','warn');drawAll();return;}
+      if(tile.type!=='empty'){sfxError();addLog('Tile tujuan harus kosong!','warn');return;}
+      const st=G.grid[fr][fc].type;
+      G.grid[r][c].type=st;G.grid[r][c].flagged=false;G.grid[r][c].served=null;G.grid[r][c].growStage=G.grid[fr][fc].growStage;
+      G.grid[fr][fc].type='empty';G.grid[fr][fc].flagged=false;G.grid[fr][fc].served=null;
+      G.moveSrc=null;sfxBuild();
+      addLog(`🔀 ${st.toUpperCase()} (${fc},${fr})→(${c},${r})`,'good');
+      if(st==='tps'&&riverDist(r,c)<=2){addLog('⚠️ TPS masih dekat sungai!','danger');sfxWarn();}
+      $('toolhint').textContent='🔀 Klik objek sumber...';
+      updateUI();drawAll();
+    }
+    return;
+  }
+  // INSPECT
+  if(tool==='inspect'){
+    sfxClick();
+    const rd=riverDist(r,c).toFixed(1),rm=(rd*10).toFixed(0);
+    let msg='';
+    if(tile.type==='house')msg=`Rumah di (${c},${r})\nTPS: ${tile.served?'✅':'❌'}\nJarak sungai: ${rd}ptk (${rm}m)\n${rd<=2?'⚠️ Zona sempadan!':'✅ Aman'}`;
+    else if(tile.type==='tps')msg=`TPS di (${c},${r})\nBuffer: ${BUF_TPS}ptk\nJarak sungai: ${rd}ptk\n${rd<=2?'⚠️ TERLALU DEKAT!':'✅ Aman'}`;
+    else if(tile.type==='hospital')msg=`RS di (${c},${r})\nBuffer kesehatan: ${BUF_HOSP}ptk (${BUF_HOSP*10}m)`;
+    else if(tile.type==='school')msg=`Sekolah di (${c},${r})\nBuffer pendidikan: ${BUF_SCH}ptk (${BUF_SCH*10}m)`;
+    else if(tile.type==='farm')msg=`Kebun di (${c},${r})\nFase tumbuh: ${tile.growStage||0}/3\nPanen setiap 3 hari`;
+    else if(tile.type==='ranch')msg=`Peternakan (${c},${r})\nIncome: +18💰/hari`;
+    else if(tile.type==='mine')msg=`Tambang (${c},${r})\nKlik dua kali = mini-game nambang!`;
+    else if(tile.type==='river')msg=`Sungai (${c},${r})\nSempadan: 2ptk (20m)`;
+    else msg=`Kosong (${c},${r})\nJarak sungai: ${rd}ptk\n${rd<=2?'⚠️ Zona sempadan!':'✅ Aman bangun'}`;
+    showNotif('🔍 INSPEKSI',msg);return;
+  }
+  // BULLDOZE
+  if(tool==='bulldoze'){
+    if(tile.type!=='empty'){
+      sfxBuild();
+      if(tile.type==='house'&&G.grid[r][c+1]&&G.grid[r][c+1].type==='house_r')G.grid[r][c+1].type='empty';
+      tile.type='empty';tile.variant=Math.random()*4|0;tile.flagged=false;
+      G.money+=5;addLog('Hancurkan +5💰','warn');updateUI();drawAll();
+    }else{sfxError();addLog('Tile kosong!','warn');}
+    return;
+  }
+  // MINE double-click open game
+  if(tool==='inspect'&&tile.type==='mine'){openMine();return;}
+
+  // BUILD
+  const cost=COSTS[tool];if(cost===undefined)return;
+  if(tool==='mine'&&tile.type==='mine'){openMine();return;}
+
+  if(tile.type!=='empty'){sfxError();addLog('Tile sudah terisi!','warn');return;}
+  if(G.money<cost){sfxError();addLog(`💰 Kurang! Butuh ${cost}💰`,'danger');return;}
+  // house is 2 wide
+  if(tool==='house'){
+    if(c+1>=COLS){sfxError();addLog('Butuh 2 tile! Terlalu di pinggir.','warn');return;}
+    if(G.grid[r][c+1].type!=='empty'){sfxError();addLog('Tile kanan juga harus kosong untuk rumah 2x1!','warn');return;}
+    sfxBuild();G.grid[r][c].type='house';G.grid[r][c+1].type='house_r';
+    G.grid[r][c].flagged=false;G.grid[r][c+1].flagged=false;
+    G.money-=cost;addLog(`Bangun RUMAH (${c},${r}) -${cost}💰`,'info');
+    if(riverDist(r,c)<=2){addLog(`⚠️ Rumah dekat sungai!`,'warn');sfxWarn();}
+    updateUI();drawAll();return;
+  }
+  if(tile.type==='empty'&&tool==='mine'&&false){openMine();return;}
+  sfxBuild();
+  G.grid[r][c].type=tool;G.grid[r][c].flagged=false;G.grid[r][c].growStage=0;
+  G.money-=cost;
+  addLog(`Bangun ${tool.toUpperCase()} (${c},${r}) -${cost}💰`,'info');
+  if(tool==='tps'&&riverDist(r,c)<=2){addLog('⚠️ TPS dekat sungai!','danger');sfxWarn();}
+  if(tool==='house'&&riverDist(r,c)<=2){addLog('⚠️ Rumah dekat sungai!','warn');sfxWarn();}
+  // open mine game immediately on placement
+  if(tool==='mine'){setTimeout(openMine,500);}
+  updateUI();drawAll();
+});
+
+// Double-click on mine to open
+canvas.addEventListener('dblclick',e=>{
+  const{r,c,valid}=getTile(e);if(!valid)return;
+  if(G.grid[r][c].type==='mine'){openMine();}
+});
+
+canvas.addEventListener('mousemove',e=>{
+  const{r,c,valid}=getTile(e);
+  drawAll();
+  if(!valid)return;
+  ctx.strokeStyle='rgba(255,255,255,.45)';ctx.lineWidth=2;
+  ctx.strokeRect(c*TILE+1,r*TILE+1,TILE-2,TILE-2);
+  if(G.tool==='tps'){
+    const cx=c*TILE+TILE/2,cy=r*TILE+TILE/2,rad=BUF_TPS*TILE+TILE/2;
+    ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);
+    ctx.fillStyle='rgba(243,156,18,.08)';ctx.fill();
+    ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(243,156,18,.5)';ctx.lineWidth=2;ctx.stroke();ctx.setLineDash([]);
+  }
+  if(G.tool==='hospital'){
+    const cx=c*TILE+TILE/2,cy=r*TILE+TILE/2,rad=BUF_HOSP*TILE+TILE/2;
+    ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);
+    ctx.fillStyle='rgba(231,76,60,.08)';ctx.fill();
+    ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(231,76,60,.5)';ctx.lineWidth=2;ctx.stroke();ctx.setLineDash([]);
+  }
+  if(G.tool==='school'){
+    const cx=c*TILE+TILE/2,cy=r*TILE+TILE/2,rad=BUF_SCH*TILE+TILE/2;
+    ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);
+    ctx.fillStyle='rgba(52,152,219,.08)';ctx.fill();
+    ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(52,152,219,.5)';ctx.lineWidth=2;ctx.stroke();ctx.setLineDash([]);
+  }
+  if(G.tool==='house'&&c+1<COLS){
+    ctx.fillStyle='rgba(255,255,255,.15)';ctx.fillRect((c+1)*TILE,r*TILE,TILE,TILE);
+  }
+  if(G.tool==='measure'&&G.measurePt){
+    const[r1,c1]=G.measurePt;const dist=Math.sqrt((r-r1)**2+(c-c1)**2).toFixed(1);
+    ctx.beginPath();ctx.moveTo(c1*TILE+TILE/2,r1*TILE+TILE/2);ctx.lineTo(c*TILE+TILE/2,r*TILE+TILE/2);
+    ctx.strokeStyle='rgba(0,212,255,.7)';ctx.lineWidth=2;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(22,27,34,.85)';ctx.fillRect(c*TILE,r*TILE-16,90,13);
+    ctx.fillStyle='#00d4ff';ctx.font='4px monospace';ctx.fillText(`${dist}ptk = ${(dist*10).toFixed(0)}m`,c*TILE+2,r*TILE-5);
+  }
+  if(G.tool==='move'&&G.moveSrc){
+    const[fr,fc]=G.moveSrc;
+    if(r!==fr||c!==fc){
+      const st=G.grid[fr][fc].type;ctx.globalAlpha=0.42;
+      if(st==='house')dHouse(c*TILE,r*TILE,null,false);
+      else if(st==='tps')dTPS(c*TILE,r*TILE,false);
+      else if(st==='hospital')dHospital(c*TILE,r*TILE,false);
+      else if(st==='school')dSchool(c*TILE,r*TILE);
+      else if(st==='park')dPark(c*TILE,r*TILE);
+      ctx.globalAlpha=1;
+      ctx.beginPath();ctx.moveTo(fc*TILE+TILE/2,fr*TILE+TILE/2);ctx.lineTo(c*TILE+TILE/2,r*TILE+TILE/2);
+      ctx.strokeStyle='rgba(0,212,255,.55)';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([]);
+    }
+  }
+});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];canvas.dispatchEvent(new MouseEvent('mousedown',{clientX:t.clientX,clientY:t.clientY,button:0}));},{passive:false});
+
+// ════════════════════════════════════════
+// PANEL TOGGLE
+// ════════════════════════════════════════
+function togglePanel(side){
+  sfxClick();
+  const app=$('app');const isL=side==='l';
+  const cls=isL?'lhide':'rhide';const tab=isL?$('ltab'):$('rtab');
+  const hidden=app.classList.toggle(cls);
+  const PW=180;
+  if(isL){tab.textContent=hidden?'▶ ALAT':'◀ ALAT';tab.style.left=hidden?'0':`${PW}px`;}
+  else{tab.textContent=hidden?'◀ STATUS':'STATUS ▶';tab.style.right=hidden?'0':`${PW}px`;}
+  tab.style.borderColor=hidden?'var(--green)':'var(--border)';
+  tab.style.color=hidden?'var(--green)':'var(--dim)';
+  const lw=app.classList.contains('lhide')?'0px':'180px';
+  const rw=app.classList.contains('rhide')?'0px':'180px';
+  app.style.gridTemplateColumns=`${lw} 1fr ${rw}`;
+  setTimeout(resize,250);
+}
+
+// ════════════════════════════════════════
+// BUFFER & HEAT TOGGLE
+// ════════════════════════════════════════
+function togBuf(){sfxClick();G.showBuf=!G.showBuf;const b=$('bufbtn');b.textContent=G.showBuf?'📡 BUF ON':'📡 BUF OFF';b.className='hudbtn'+(G.showBuf?' on':'');drawAll();}
+function togHeat(){sfxClick();G.showHeat=!G.showHeat;$('heatbtn').style.background=G.showHeat?'rgba(231,76,60,.2)':'rgba(22,27,34,.88)';if(!G.showHeat)hctx.clearRect(0,0,heatC.width,heatC.height);drawAll();}
+
+// ════════════════════════════════════════
+// UI UPDATE
+// ════════════════════════════════════════
+function updateUI(){
+  const{srv,uns}=analyze();const tot=srv+uns,wr=tot?uns/tot:0;
+  G.happy=Math.max(0,Math.round(100-wr*80-(G.pop>0&&!tot?30:0)));
+  $('sm').textContent=G.money;$('sp').textContent=G.pop;$('sh').textContent=G.happy+'%';
+  $('sd').textContent='Hari '+G.day;$('sw').textContent=Math.round(wr*100)+'%';
+  $('swbox').className='stt'+(wr>.3?' warn':'');
+  $('ih').textContent=countType('house');$('ihs').textContent=countType('hospital');
+  $('isc').textContent=countType('school');$('in').textContent=G.pop;
+  $('ic').textContent=srv+'/'+tot;
+  $('ifarm').textContent=countType('farm');$('iranch').textContent=countType('ranch');$('imine').textContent=countType('mine');
+  $('isrv').textContent=srv;$('iuns').textContent=uns;
+  $('ihap').textContent=G.happy+'%';$('ihap').className='v '+(G.happy>70?'ok':G.happy>40?'mid':'bad');
+  $('bwaste').style.width=wr*100+'%';$('bwaste').style.background=wr>.5?'var(--red)':wr>.2?'var(--yellow)':'var(--green)';
+  $('bhap').style.width=G.happy+'%';$('bhap').style.background=G.happy>70?'var(--green)':G.happy>40?'var(--yellow)':'var(--red)';
+}
+function addLog(msg,type='info'){const el=document.createElement('div');el.className='le '+type;el.textContent=`[H${G.day}] ${msg}`;const log=$('log');log.appendChild(el);log.scrollTop=log.scrollHeight;while(log.children.length>50)log.removeChild(log.firstChild);}
+function showNotif(t,b){$('ntitle').textContent=t;$('nbody').textContent=b;$('notif').classList.add('show');}
+function closeNotif(){$('notif').classList.remove('show');sfxClick();}
+
+// ════════════════════════════════════════
+// RUNNER MINI-GAME
+// ════════════════════════════════════════
+let runner={active:false,reward:0};
+let RUN={x:40,y:120,vy:0,onGround:true,score:0,coins:0,dist:0,alive:true,obstacles:[],coinObjs:[],speed:3,frame:0};
+
+function openRunner(){
+  $('runnov').classList.add('show');
+  runner.active=true;
+  RUN={x:40,y:120,vy:0,onGround:true,score:0,coins:0,dist:0,alive:true,obstacles:[],coinObjs:[],speed:3,frame:0};
+  runLoop();
+}
+function closeRunner(){
+  runner.active=false;$('runnov').classList.remove('show');
+  if(RUN.coins>0){const reward=RUN.coins*30;G.money+=reward;addLog(`🏃 Runner: ${RUN.coins} koin = +${reward}💰`,'good');sfxCoin();updateUI();}
+}
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&$('runnov').classList.contains('show')){e.preventDefault();if(RUN.onGround){RUN.vy=-10;RUN.onGround=false;sfxCoin();}}});
+$('run-canvas').addEventListener('click',()=>{if(RUN.onGround){RUN.vy=-10;RUN.onGround=false;sfxCoin();}});
+
+function runLoop(){
+  if(!runner.active)return;
+  const rc=$('run-canvas'),rctx2=rc.getContext('2d');
+  const W=rc.width,H=rc.height,GH=150;
+  // physics
+  if(RUN.alive){
+    RUN.vy+=0.6;RUN.y+=RUN.vy;
+    if(RUN.y>=GH){RUN.y=GH;RUN.vy=0;RUN.onGround=true;}
+    RUN.dist+=RUN.speed;RUN.frame++;
+    RUN.speed=3+RUN.dist/1200;
+    // spawn obstacles
+    if(RUN.frame%Math.max(30,70-RUN.dist/100|0)===0)
+      RUN.obstacles.push({x:W,w:14+Math.random()*10|0,h:20+Math.random()*20|0});
+    // spawn coins
+    if(RUN.frame%45===0)RUN.coinObjs.push({x:W,y:GH-30-Math.random()*50,got:false});
+    // move & check
+    for(const o of RUN.obstacles){o.x-=RUN.speed;}
+    for(const co of RUN.coinObjs){co.x-=RUN.speed;}
+    RUN.obstacles=RUN.obstacles.filter(o=>o.x>-20);
+    // collision
+    for(const o of RUN.obstacles){
+      if(RUN.x+10>o.x&&RUN.x-10<o.x+o.w&&RUN.y>GH-o.h){RUN.alive=false;sfxFail();}
+    }
+    // coin collect
+    for(const co of RUN.coinObjs){
+      if(!co.got&&Math.abs(RUN.x-co.x)<16&&Math.abs(RUN.y-co.y)<16){co.got=true;RUN.coins++;sfxCoin();}
+    }
+    RUN.coinObjs=RUN.coinObjs.filter(co=>co.x>-10);
+    RUN.score++;
+  }
+  // DRAW
+  rctx2.fillStyle='#0d0020';rctx2.fillRect(0,0,W,H);
+  // stars
+  rctx2.fillStyle='rgba(255,255,255,.4)';
+  for(let i=0;i<15;i++){const sx=(i*137+RUN.dist*.3)%W;rctx2.fillRect(sx,i*9%50,1,1);}
+  // ground
+  rctx2.fillStyle='#4a2800';rctx2.fillRect(0,GH+2,W,H-GH-2);
+  rctx2.fillStyle='#6a3800';rctx2.fillRect(0,GH,W,4);
+  // obstacles (cactus)
+  rctx2.fillStyle='#2ecc71';
+  for(const o of RUN.obstacles){
+    rctx2.fillRect(o.x,GH-o.h+2,o.w,o.h);
+    rctx2.fillRect(o.x-6,GH-o.h+8,8,6);
+    rctx2.fillRect(o.x+o.w-2,GH-o.h+12,8,5);
+  }
+  // coins
+  rctx2.fillStyle='#f1c40f';
+  for(const co of RUN.coinObjs){if(!co.got){rctx2.beginPath();rctx2.arc(co.x,co.y,7,0,Math.PI*2);rctx2.fill();rctx2.fillStyle='#f39c12';rctx2.font='bold 8px monospace';rctx2.fillText('$',co.x-4,co.y+3);rctx2.fillStyle='#f1c40f';}}
+  // player
+  const px=RUN.x,py=RUN.y;
+  rctx2.fillStyle=RUN.alive?'#e74c3c':'#888';
+  rctx2.fillRect(px-6,py-18,12,14); // body
+  rctx2.fillStyle='#ffe0bd';rctx2.fillRect(px-5,py-26,10,10); // head
+  // legs anim
+  const legPhase=RUN.frame%14;
+  rctx2.fillStyle='#2980b9';
+  if(RUN.onGround){rctx2.fillRect(px-6,py-4,5,6);rctx2.fillRect(px+1,py-4,5,6);}
+  else{rctx2.fillRect(px-7,py-8,5,8);rctx2.fillRect(px+2,py-2,5,8);}
+  // hud
+  rctx2.fillStyle='#fff';rctx2.font='7px monospace';
+  rctx2.fillText(`🪙 ${RUN.coins}  📏 ${RUN.score}`,8,15);
+  if(!RUN.alive){
+    rctx2.fillStyle='rgba(0,0,0,.6)';rctx2.fillRect(0,0,W,H);
+    rctx2.fillStyle='#e74c3c';rctx2.font='bold 14px monospace';rctx2.fillText('GAME OVER',W/2-60,H/2-10);
+    rctx2.fillStyle='#f1c40f';rctx2.font='9px monospace';rctx2.fillText(`Koin: ${RUN.coins} × 30💰`,W/2-60,H/2+12);
+    rctx2.fillStyle='#2ecc71';rctx2.font='7px monospace';rctx2.fillText('[Tutup untuk ambil hadiah]',W/2-85,H/2+30);
+  }
+  $('run-score').textContent=`Skor: ${RUN.score} | Koin: ${RUN.coins} | Speed: ${RUN.speed.toFixed(1)}`;
+  if(runner.active)requestAnimationFrame(runLoop);
+}
+
+// ════════════════════════════════════════
+// MINE MINI-GAME
+// ════════════════════════════════════════
+let mine={active:false,grid:[],stamina:20,minerals:0,value:0};
+const MINE_COLS=14,MINE_ROWS=10,MTILE=30;
+const MINE_TYPES=[
+  {t:'stone',  col:'#555',val:0,  prob:.5},
+  {t:'dirt',   col:'#8B4513',val:0,  prob:.25},
+  {t:'coal',   col:'#3498db',val:20, prob:.12,icon:'🔵'},
+  {t:'gold',   col:'#f1c40f',val:50, prob:.08,icon:'🟡'},
+  {t:'gem',    col:'#e91e63',val:100,prob:.04,icon:'💎'},
+  {t:'empty',  col:'transparent',val:0,prob:0},
+];
+
+function openMine(){
+  mine.active=true;mine.stamina=20;mine.minerals=0;mine.value=0;
+  mine.grid=[];
+  for(let r=0;r<MINE_ROWS;r++){
+    mine.grid.push([]);
+    for(let c=0;c<MINE_COLS;c++){
+      let roll=Math.random(),cum=0,chosen=MINE_TYPES[0];
+      for(const mt of MINE_TYPES){cum+=mt.prob;if(roll<=cum){chosen=mt;break;}}
+      mine.grid[r].push({...chosen,revealed:r===0});
+    }
+  }
+  $('mineov').classList.add('show');
+  drawMine();
+}
+function closeMine(){
+  mine.active=false;$('mineov').classList.remove('show');
+  if(mine.value>0){G.money+=mine.value;addLog(`⛏️ Nambang: ${mine.minerals} mineral = +${mine.value}💰`,'good');sfxCoin();updateUI();}
+}
+function drawMine(){
+  const mc=$('mine-canvas'),mctx=mc.getContext('2d');
+  mctx.fillStyle='#0a0800';mctx.fillRect(0,0,mc.width,mc.height);
+  for(let r=0;r<MINE_ROWS;r++)for(let c=0;c<MINE_COLS;c++){
+    const bl=mine.grid[r][c],x=c*MTILE+2,y=r*MTILE+2;
+    if(bl.revealed){
+      mctx.fillStyle=bl.col==='transparent'?'#1a1200':bl.col;mctx.fillRect(x,y,MTILE-4,MTILE-4);
+      if(bl.icon){mctx.font='14px monospace';mctx.fillText(bl.icon,x+5,y+18);}
+      if(bl.t==='stone'||bl.t==='dirt'){
+        mctx.fillStyle=bl.t==='stone'?'#444':'#7a3800';
+        mctx.fillRect(x+4,y+4,MTILE-12,MTILE-12);
+      }
+    }else{
+      mctx.fillStyle='#2a1800';mctx.fillRect(x,y,MTILE-4,MTILE-4);
+      mctx.fillStyle='#3a2200';mctx.fillRect(x+3,y+3,MTILE-10,MTILE-10);
+      // sparkle hint for minerals near surface
+      if(bl.val>0&&r<3){mctx.fillStyle='rgba(255,200,0,.3)';mctx.fillRect(x+MTILE/2-3,y+MTILE/2-3,6,6);}
+    }
+    // grid lines
+    mctx.strokeStyle='rgba(255,200,0,.08)';mctx.lineWidth=1;mctx.strokeRect(x,y,MTILE-4,MTILE-4);
+  }
+  $('mine-score').textContent=`Mineral: ${mine.minerals} | Nilai: ${mine.value}💰 | Stamina: ${mine.stamina}`;
+}
+$('mine-canvas').addEventListener('click',e=>{
+  if(!mine.active)return;
+  const rect=e.target.getBoundingClientRect();
+  const c=Math.floor((e.clientX-rect.left)/MTILE);
+  const r=Math.floor((e.clientY-rect.top)/MTILE);
+  if(c<0||c>=MINE_COLS||r<0||r>=MINE_ROWS)return;
+  const bl=mine.grid[r][c];
+  if(!bl.revealed){
+    if(mine.stamina<=0){addLog('Stamina habis! Tutup tambang.','danger');return;}
+    mine.stamina--;
+    bl.revealed=true;
+    // reveal neighbors row above/current row
+    if(r+1<MINE_ROWS)mine.grid[r+1][c].revealed=true;
+    if(bl.val>0){mine.minerals++;mine.value+=bl.val;sfxPickup();tone(bl.val>=100?880:bl.val>=50?659:440,.1);}
+    else sfxClick();
+    if(mine.stamina===0)showNotif('⛏️ STAMINA HABIS!',`Hasil tambang:\n${mine.minerals} mineral\n+${mine.value}💰\n\nTutup untuk ambil hasil!`);
+    drawMine();
+  }
+});
+
+// ════════════════════════════════════════
+// GAME LOOP
+// ════════════════════════════════════════
+let last=0;
+function loop(ts){
+  const dt=ts-last;last=ts;
+  if(dt<300){npcT+=dt;if(npcT>2500){npcT=0;spawnNPC();}updateNPCs();drawAll();drawRain();drawFlood();}
+  requestAnimationFrame(loop);
+}
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+resize();
+// Pre-place river
+for(let r=0;r<ROWS;r++){
+  const c=r<6?7:r<12?8:9;
+  G.grid[r][c].type='river';
+  if(r>3&&r<14)G.grid[r][c+1].type='river';
+}
+addLog('GeoKota v4 siap! Sungai ada di kiri-tengah peta.','good');
+addLog('Tambang ⛏️ buka mini-game nambang. Runner ada di menu.','info');
+addLog('Hari ganti otomatis 30 detik. Bangun kota!','info');
+updateUI();requestAnimationFrame(loop);
+
+// Runner button in bottom bar
+const rb=document.createElement('button');
+rb.style.cssText='white-space:nowrap;background:#9b59b6;color:#fff;border:none;font-family:"Press Start 2P",monospace;font-size:5px;padding:6px 8px;cursor:pointer;';
+rb.textContent='🏃 RUNNER';rb.onclick=openRunner;
+$('bot').insertBefore(rb,$('ndaybtn'));
+</script>
+</body>
+</html>
